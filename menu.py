@@ -59,21 +59,23 @@ nuke.knobDefault("EXPTool.mode", "0")
 nuke.knobDefault("Root.format", "2k 1.77")
 
 
-
-
 # Deadline
-import DeadlineNukeClient
+# Instead of using the Deadline Submit Script
+# Use the one in /scripts/deadline
+nuke.pluginAddPath('scripts/deadline')
+import SubmitNukeToDeadline
+
 menubar = nuke.menu("Nuke")
 tbmenu = menubar.addMenu("Render")
-tbmenu.addCommand("Render on the boat's farm...", DeadlineNukeClient.main, "")
+tbmenu.addCommand("Render on the boat's farm...", SubmitNukeToDeadline.SubmitToDeadline, "")
 
 #Deadline Button
-theboatNodes.addCommand("Render on the boat's farm...", DeadlineNukeClient.main, icon= theBoatConfigFolder+'/icons/deadlineIcon.png')
+theboatNodes.addCommand("Render on the boat's farm...", SubmitNukeToDeadline.SubmitToDeadline, icon= theBoatConfigFolder+'/icons/deadlineIcon.png')
 
-
-try:
-    if nuke.env[ 'studio' ]:
-        import DeadlineNukeFrameServerClient
-        tbmenu.addCommand("Reserve Frame Server Slaves", DeadlineNukeFrameServerClient.main, "")
-except:
-    pass
+#
+#try:
+#    if nuke.env[ 'studio' ]:
+#        import DeadlineNukeFrameServerClient
+#        tbmenu.addCommand("Reserve Frame Server Slaves", DeadlineNukeFrameServerClient.main, "")
+#except:
+#    pass

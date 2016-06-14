@@ -24,7 +24,6 @@ for job in jobs:
 nuke.pluginAddPath('/theboat/_config/scripts')
 import pasteToSelected
 
-
 # ViewerProcess LUTs
 nuke.ViewerProcess.register("AlexaV3Rec709", nuke.Node, ("AlexaV3Rec709", ""))
 nuke.ViewerProcess.register("AlexaLogC", nuke.Node, ("AlexaLogC", ""))
