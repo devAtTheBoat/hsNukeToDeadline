@@ -47,13 +47,6 @@ nuke.addBeforeRender( createWriteDir )
 print ('Activated createWriteDir')
 
 
-
-
-
-
-
-
-
 # LUMA PICTURES GIZMO LOADER
 
 '''
