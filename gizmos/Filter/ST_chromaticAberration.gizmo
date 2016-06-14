@@ -1,0 +1,199 @@
+#! D:/Program Files/Nuke7.0v5/Nuke7.0.exe -nx
+version 7.0 v5
+Gizmo {
+ lock_connections true
+ addUserKnob {20 User}
+ addUserKnob {26 chromAb l "" +STARTLINE T ST_chromaticAberration_v1.5}
+ addUserKnob {26 ""}
+ addUserKnob {3 channels l "Red/Green - Green/Blue" t "0 = red/green aberration\n1 = green/blue aberration"}
+ addUserKnob {26 ""}
+ addUserKnob {7 amount l "Aberration Amount" t "Controls the amount of aberration\nRange = 0.9 - 1.1\nA value of 1 = no aberration\nValues of 0.998 to 1.001 generally yield the best results for ~HD footage" R 0.9 1.1}
+ amount 1.0017
+ addUserKnob {26 ""}
+}
+ Input {
+  inputs 0
+  name Input1
+  xpos 828
+  ypos -789
+ }
+ Dot {
+  name Dot15
+  xpos 862
+  ypos -705
+ }
+ Dot {
+  name Dot8
+  xpos 862
+  ypos -642
+ }
+set N24e53d30 [stack 0]
+ Dot {
+  name Dot9
+  xpos 547
+  ypos -642
+ }
+set N24e540a0 [stack 0]
+ Remove {
+  channels {rgba.red rgba.green -rgba.blue}
+  name CAgreen2
+  xpos 380
+  ypos -202
+ }
+push $N24e540a0
+ Remove {
+  channels {-rgba.red rgba.green rgba.blue}
+  name CAred1
+  xpos 513
+  ypos -261
+ }
+ Switch {
+  inputs 2
+  which {{parent.channels}}
+  name Switch1
+  xpos 513
+  ypos -196
+ }
+ Transform {
+  scale {{parent.amount}}
+  center {1024 778}
+  name Transform3
+  xpos 736
+  ypos -21
+ }
+set N24e54af0 [stack 0]
+ Grade {
+  channels alpha
+  multiply 0.3333333333
+  name Grade5
+  xpos 1022
+  ypos 94
+ }
+push 0
+push $N24e53d30
+ Remove {
+  channels {-rgba.red rgba.green rgba.blue}
+  name CAred2
+  xpos 698
+  ypos -196
+ }
+push $N24e53d30
+ Remove {
+  channels {rgba.red rgba.green -rgba.blue}
+  name CAgreen1
+  xpos 828
+  ypos -261
+ }
+ Switch {
+  inputs 2
+  which {{parent.channels}}
+  name Switch2
+  xpos 828
+  ypos -190
+ }
+set N24f808d0 [stack 0]
+ Grade {
+  channels alpha
+  multiply 0.3333333333
+  name Grade6
+  xpos 1022
+  ypos 25
+ }
+push $N24e53d30
+ Dot {
+  name Dot10
+  xpos 1290
+  ypos -642
+ }
+ Remove {
+  channels {rgba.red -rgba.green rgba.blue}
+  name CAblue1
+  xpos 1256
+  ypos -262
+ }
+ Transform {
+  scale {{((parent.Transform3.scale-1)*-1)+1}}
+  center {1024 778}
+  name Transform4
+  xpos 921
+  ypos -21
+ }
+set N24f5da30 [stack 0]
+ Grade {
+  channels alpha
+  multiply 0.3333333333
+  name Grade7
+  xpos 1110
+  ypos -27
+ }
+ Dot {
+  name Dot11
+  xpos 1182
+  ypos 71
+ }
+ Merge2 {
+  inputs 3+1
+  operation plus
+  Achannels alpha
+  Bchannels alpha
+  output alpha
+  name Merge5
+  xpos 1148
+  ypos 94
+ }
+ Dot {
+  name Dot12
+  xpos 1182
+  ypos 174
+ }
+push $N24f5da30
+ Dot {
+  name Dot13
+  xpos 955
+  ypos 111
+ }
+push $N24e54af0
+ Dot {
+  name Dot14
+  xpos 770
+  ypos 71
+ }
+push $N24f808d0
+ Merge2 {
+  inputs 2
+  operation plus
+  name Merge6
+  xpos 828
+  ypos 68
+ }
+ Merge2 {
+  inputs 2
+  operation plus
+  name Merge7
+  xpos 828
+  ypos 108
+ }
+ Shuffle {
+  alpha black
+  name Shuffle2
+  xpos 828
+  ypos 136
+ }
+ ShuffleCopy {
+  inputs 2
+  name ShuffleCopy2
+  xpos 828
+  ypos 171
+ }
+ Dot {
+  name Dot16
+  xpos 862
+  ypos 240
+ }
+ Output {
+  name Output1
+  selected true
+  xpos 828
+  ypos 350
+ }
+end_group
