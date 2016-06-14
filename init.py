@@ -4,7 +4,6 @@
 #####################
 
 
-
 import nuke, os, sys, re
 
 theBoatFolder = os.environ["THEBOATFOLDER"]
