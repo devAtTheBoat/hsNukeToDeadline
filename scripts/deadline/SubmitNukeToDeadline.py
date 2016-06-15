@@ -64,7 +64,7 @@ class DeadlineDialog( nukescripts.PythonPanel ):
 
         self.setMinimumSize( width, height ) # width, height
         self.ReadInDraftOptions()
-        self.jobTab = nuke.Tab_Knob( "Deadline_JobOptionsTab", "Job Options" )
+        self.jobTab = nuke.Tab_Knob( "Deadline_JobOptionsTab", "Render on the farm" )
         self.addKnob( self.jobTab )
 
         ##########################################################################################
@@ -90,8 +90,8 @@ class DeadlineDialog( nukescripts.PythonPanel ):
         self.department.setValue( "" )
 
         # Separator
-        self.separator1 = nuke.Text_Knob( "Deadline_Separator1", "" )
-        self.addKnob( self.separator1 )
+#        self.separator1 = nuke.Text_Knob( "Deadline_Separator1", "" )
+#        self.addKnob( self.separator1 )
 
         ##########################################################################################
         ## Job Scheduling
@@ -381,9 +381,13 @@ class DeadlineDialog( nukescripts.PythonPanel ):
         ##########################################################################################
         ## Project Management Options (aka Shotgun/FTrack/NIM)
         ##########################################################################################
+#
+#        self.integrationTab = nuke.Tab_Knob( "Deadline_IntegrationTab", "Integration" )
+#        self.addKnob( self.integrationTab )
 
-        self.integrationTab = nuke.Tab_Knob( "Deadline_IntegrationTab", "Integration" )
-        self.addKnob( self.integrationTab )
+        # Separator
+        self.separator1 = nuke.Text_Knob( "Deadline_Separator100", "" )
+        self.addKnob( self.separator1 )
 
         self.projectManagementCombo = nuke.Enumeration_Knob( "Deadline_PMIntegration", "Project Management", ["Shotgun", "FTrack", "NIM"] )
         self.addKnob( self.projectManagementCombo )
@@ -523,6 +527,95 @@ class DeadlineDialog( nukescripts.PythonPanel ):
             self.pulledFTrackKVPs = {}
         elif len(self.pulledFTrackKVPs) >0:
             self.ftrackKVPs = {}
+
+
+        ##########################################################################################
+        ## HIDE DEFAULT KNOBSSSSS
+        ##########################################################################################
+
+
+#        self.jobName.setVisible(False)
+        self.comment.setVisible(False)
+        self.department.setVisible(False)
+#        self.separator1.setVisible(False)
+#        self.pool.setVisible(False)
+        self.secondaryPool.setVisible(False)
+        self.group.setVisible(False)
+        self.priority.setVisible(False)
+        self.taskTimeout.setVisible(False)
+        self.autoTaskTimeout.setVisible(False)
+        self.concurrentTasks.setVisible(False)
+        self.limitConcurrentTasks.setVisible(False)
+        self.machineLimit.setVisible(False)
+        self.isBlacklist.setVisible(False)
+        self.machineList.setVisible(False)
+        self.machineListButton.setVisible(False)
+        self.limitGroups.setVisible(False)
+        self.limitGroupsButton.setVisible(False)
+        self.dependencies.setVisible(False)
+        self.dependenciesButton.setVisible(False)
+        self.onComplete.setVisible(False)
+        self.submitSuspended .setVisible(False)
+#        self.frameListMode.setVisible(False)
+#        self.frameList.setVisible(False)
+#        self.chunkSize.setVisible(False)
+        self.useNukeX.setVisible(False)
+        self.batchMode.setVisible(False)
+        self.threads.setVisible(False)
+        self.useGpu.setVisible(False)
+        self.renderMode.setVisible(False)
+        self.memoryUsage.setVisible(False)
+        self.enforceRenderOrder.setVisible(False)
+        self.stackSize.setVisible(False)
+        self.continueOnError.setVisible(False)
+        self.submitScene.setVisible(False)
+        self.performanceProfiler.setVisible(False)
+        self.reloadPlugin.setVisible(False)
+        self.performanceProfilerPath.setVisible(False)
+        self.chooseViewsToRender.setVisible(False)
+        self.separator1.setVisible(False)
+        self.separateJobs.setVisible(False)
+        self.useNodeRange.setVisible(False)
+        self.separateJobDependencies.setVisible(False)
+        self.separateTasks.setVisible(False)
+        self.selectedOnly.setVisible(False)
+        self.readFileOnly.setVisible(False)
+        self.precompFirst.setVisible(False)
+        self.precompOnly.setVisible(False)
+
+
+
+
+
+
+
+
+
+
+#        self.integrationTab.setVisible(False)
+#        self.projectManagementCombo.setVisible(False)
+#        self.connectButton.setVisible(False)
+#        self.createNewVersion.setVisible(False)
+#        self.projMgmtVersion.setVisible(False)
+#        self.projMgmtDescription.setVisible(False)
+#        self.projMgmtInfo.setVisible(False)
+#        self.draftCreateMovie.setVisible(False)
+#        self.draftCreateFilmStrip.setVisible(False)
+#        self.draftSeparator1.setVisible(False)
+#        self.submitDraftJob.setVisible(False)
+#        self.uploadToShotgun.setVisible(False)
+#        self.useQuickDraft.setVisible(False)
+#        self.draftFormat.setVisible(False)
+#        self.draftCodec.setVisible(False)
+#        self.draftResolution.setVisible(False)
+#        self.draftQuality.setVisible(False)
+#        self.draftFrameRate.setVisible(False)
+#        self.templatePath.setVisible(False)
+#        self.draftUser.setVisible(False)
+#        self.draftEntity.setVisible(False)
+#        self.draftVersion.setVisible(False)
+#        self.draftExtraArgs.setVisible(False)
+#        self.useShotgunDataButton.setVisible(False)
 
     def ReadInDraftOptions(self):
         global Formats
@@ -2497,8 +2590,8 @@ def SubmitToDeadline( ):
     DeadlineGlobals.initSeparateTasks = False
     DeadlineGlobals.initUseNodeRange = True
     DeadlineGlobals.initReadFileOnly = False
-    DeadlineGlobals.initSelectedOnly = False
-    DeadlineGlobals.initSubmitScene = False
+    DeadlineGlobals.initSelectedOnly = True
+    DeadlineGlobals.initSubmitScene = True
     DeadlineGlobals.initBatchMode = True
     DeadlineGlobals.initContinueOnError = False
     DeadlineGlobals.initUseGpu = False
