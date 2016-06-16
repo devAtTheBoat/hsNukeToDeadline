@@ -56,14 +56,12 @@ if ( not os.environ.get('THEBOATFOLDER') == None ):
     # Use the one in /scripts/deadline
     nuke.pluginAddPath('scripts/deadline')
     import hsNukeToDeadline
-    import SubmitNukeToDeadline
 
     #menubar = nuke.menu("Nuke")
     #tbmenu = menubar.addMenu("Render")
     #tbmenu.addCommand("Render on the boat's farm...", SubmitNukeToDeadline.SubmitToDeadline, "")
 
     #Deadline Button
-    theboatNodes.addCommand("SubmitNukeToDeadline", SubmitNukeToDeadline.SubmitToDeadline, icon= theBoatConfigFolder+'/icons/deadlineIcon.png')
     theboatNodes.addCommand("hsNukeToDeadline...", hsNukeToDeadline.SubmitToDeadline, icon= theBoatConfigFolder+'/icons/deadlineIcon.png')
     #
     #try:
