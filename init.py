@@ -6,7 +6,7 @@
 import nuke, os, sys, re
 
 # dont do anything if the environment is not set
-if ( not os.environ.get('THEBOATFOLDER') == None ):
+if ( not os.environ.get("THEBOATFOLDER") == None ):
     theBoatFolder = os.environ["THEBOATFOLDER"]
     theBoatConfigFolder = theBoatFolder+"/_config"
 
