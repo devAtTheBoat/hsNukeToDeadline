@@ -71,21 +71,21 @@ if ( not os.environ.get("THEBOATFOLDER") == None ):
     #        tbmenu.addCommand("Reserve Frame Server Slaves", DeadlineNukeFrameServerClient.main, "")
     #except:
     #    pass
-
-
-
-    import DeadlineNukeClient
-    menubar = nuke.menu("Nuke")
-    tbmenu = menubar.addMenu("&Thinkbox")
-    tbmenu.addCommand("Submit Nuke To Deadline", DeadlineNukeClient.main, "")
-    try:
-        if nuke.env[ 'studio' ]:
-            import DeadlineNukeFrameServerClient
-            tbmenu.addCommand("Reserve Frame Server Slaves", DeadlineNukeFrameServerClient.main, "")
-    except:
-        pass
-    try:
-        import DeadlineNukeVrayStandaloneClient
-        tbmenu.addCommand("Submit VRay Standalone to Deadline", DeadlineNukeVrayStandaloneClient.main, "")
-    except:
-        pass
+#
+#
+#
+#    import DeadlineNukeClient
+#    menubar = nuke.menu("Nuke")
+#    tbmenu = menubar.addMenu("&Thinkbox")
+#    tbmenu.addCommand("Submit Nuke To Deadline", DeadlineNukeClient.main, "")
+#    try:
+#        if nuke.env[ 'studio' ]:
+#            import DeadlineNukeFrameServerClient
+#            tbmenu.addCommand("Reserve Frame Server Slaves", DeadlineNukeFrameServerClient.main, "")
+#    except:
+#        pass
+#    try:
+#        import DeadlineNukeVrayStandaloneClient
+#        tbmenu.addCommand("Submit VRay Standalone to Deadline", DeadlineNukeVrayStandaloneClient.main, "")
+#    except:
+#        pass
