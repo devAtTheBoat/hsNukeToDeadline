@@ -15,13 +15,12 @@ import re
 import nuke
 import nukescripts
 
-from simpleSgApi import simpleSgApi
+import datetime
 
 # THE DIALOG
 class HS_DeadlineDialog( nukescripts.PythonPanel ):
     def __init__( self, maximumPriority, pools, secondaryPools, groups ):
         nukescripts.PythonPanel.__init__( self, "Submit To Deadline", "com.vfxboat.software.deadlinedialog" )
-        self.sg = simpleSgApi();
 
         width = 620
         height = 705
@@ -148,9 +147,9 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         ##########################################################################################
 
         # WE SHOULD CHANGE THIS TO DRAFT QUALITY
-        self.draftTemplateCombo = nuke.Enumeration_Knob( "Deadline_draftTemplate", "Draft Quality", ["Apple ProRes", "DNXHD", "H.264"] )
-        self.addKnob( self.draftTemplateCombo )
-        self.draftTemplateCombo.setTooltip( "Select the draft quality" )
+#        self.draftTemplateCombo = nuke.Enumeration_Knob( "Deadline_draftTemplate", "Draft Quality", ["Apple ProRes", "DNXHD", "H.264"] )
+#        self.addKnob( self.draftTemplateCombo )
+#        self.draftTemplateCombo.setTooltip( "Select the draft quality" )
 
     def ShowDialog( self ):
         return nukescripts.PythonPanel.showModalDialog( self )
@@ -184,6 +183,11 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
             if self.sgUserName.value() == '':
                 nuke.message('You should write your SG account name')
             else:
+
+                from simpleSgApi import simpleSgApi
+
+                self.sg = simpleSgApi();
+
                 self.sg.connect(self.sgUserName.value())
                 self.sgTasks = self.sg.getTasks()
 
@@ -199,9 +203,6 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
             print ( "selected task %s" % self.sgTaskCombo.value() )
             for task in self.sgTasks:
                 if self.sgTaskCombo.value() == task['content']:
-
-                    print task
-
                     self.sgProjectName.setValue( task["project"]["name"] )
                     self.sgProjectId.setValue( str( task["project"]["id"] ) )
                     self.sgEntityName.setValue( task["entity"]["name"] )
@@ -379,6 +380,9 @@ def SubmitToDeadline( ):
         if dialog.frameList.value().strip() == "":
             errorMessages = errorMessages + "No frame list has been specified.\n\n"
         
+        if dialog.sgUserName.value() == "" or dialog.sgTaskId.value() == "" or dialog.sgVersionName.value() == "" :
+            errorMessages = errorMessages + "There are no Shotgun Information available. Please complete the missing information."
+
         # If submitting separate write nodes, make sure there are jobs to submit
         if dialog.selectedOnly.value():
             validNodeFound = False
@@ -578,9 +582,11 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     extraKVPIndex += 1
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftVersion=%s\n" % (extraKVPIndex, dialog.sgVersionName.value() ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameWidth=%s\n" % (extraKVPIndex, 1280 ) ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameWidth=%d\n" % (extraKVPIndex, 1280 ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameHeight=%s\n" % (extraKVPIndex, 720 ) ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameHeight=%d\n" % (extraKVPIndex, 720 ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftRatio=%s\n" % (extraKVPIndex, "2.35" ) ) )
     extraKVPIndex += 1
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtraArgs=%s\n" % (extraKVPIndex, "" ) ) )
     extraKVPIndex += 1
@@ -589,7 +595,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
 #    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%s=Draft_CreateSGMovie=True\n" % extraKVPIndex ) )
 #    extraKVPIndex += 1
 
-    # This line renders a filmstrip for shotgun
+#     This line renders a filmstrip for shotgun
 #    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%s=Draft_CreateSGFilmstrip=True\n" % extraKVPIndex ) )
 #    extraKVPIndex += 1
 
@@ -662,7 +668,8 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     args = []
     args.append( jobInfoFile.encode(locale.getpreferredencoding() ) )
     args.append( pluginInfoFile.encode(locale.getpreferredencoding() ) )
-    args.append( root.name() ) # SUBMIT SCENE
+    args.append( root.name() ) # SUBMIT NK
+    args.append( (os.path.join(os.path.dirname(__file__), "draft/slateBackground.dpx") ) )  # SUBMIT SLATE FRAME
         
     tempResults = ""
     
@@ -790,6 +797,9 @@ def EncodeAsUTF16String( unicodeString ):
 
 def CallDeadlineCommand( arguments, hideWindow=True ):
     # On OSX, we look for the DEADLINE_PATH file. On other platforms, we use the environment variable.
+
+#    print "STARTING CallDeadlineCommand " +  str ( datetime.datetime.now().time() )
+
     if os.path.exists( "/Users/Shared/Thinkbox/DEADLINE_PATH" ):
         with open( "/Users/Shared/Thinkbox/DEADLINE_PATH" ) as f: deadlineBin = f.read().strip()
         deadlineCommand = deadlineBin + "/deadlinecommand"
@@ -827,4 +837,5 @@ def CallDeadlineCommand( arguments, hideWindow=True ):
     
     output = proc.stdout.read()
     
+#    print "FINISHING CallDeadlineCommand " + str ( datetime.datetime.now().time() )
     return output
