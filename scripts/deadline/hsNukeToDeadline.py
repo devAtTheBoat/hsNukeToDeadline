@@ -15,6 +15,8 @@ import re
 import nuke
 import nukescripts
 
+import datetime
+
 # THE DIALOG
 class HS_DeadlineDialog( nukescripts.PythonPanel ):
     def __init__( self, maximumPriority, pools, secondaryPools, groups ):
@@ -93,20 +95,47 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         # Get the jobname from the filename
         self.sgUserName = nuke.String_Knob( "Deadline_sgUserName", "User" )
         self.addKnob( self.sgUserName )
-        self.sgUserName.setTooltip( "The name of your job. This is optional, and if left blank, it will default to 'Untitled'." )
+        self.sgUserName.setTooltip( "Your Shotgun account name" )
         self.sgUserName.setValue( '' )
         
-        self.testButton = nuke.PyScript_Knob( "Deadline_TestButton", "Test" )
-        self.addKnob( self.testButton )
-        self.testButton.setTooltip( "Tests the SG connection." )
+        self.sgConnectButton = nuke.PyScript_Knob( "Deadline_SGConnectButton", "Connect")
+        self.addKnob( self.sgConnectButton )
+        self.sgConnectButton.setTooltip( "Connect to the SG" )
         
         # SG Task
         # Get the jobname from the os.environ
         sgTask = os.environ["TASK"]
-        self.sgTaskCombo = nuke.Enumeration_Knob( "Deadline_sgTasks", "Tasks", [sgTask, "task 2", "task 3"] )
+        self.sgTaskCombo = nuke.Enumeration_Knob( "Deadline_sgTasks", "Tasks", [] )
         self.addKnob( self.sgTaskCombo )
         self.sgTaskCombo.setTooltip( "Select your task" )
         
+        self.sgTaskId = nuke.String_Knob("Deadline_sgTaskId", "Task Id")
+        self.addKnob( self.sgTaskId )
+        self.sgTaskId.setEnabled( False )
+
+        self.sgProjectName = nuke.String_Knob("Deadline_sgProjectName", "Project Name")
+        self.addKnob( self.sgProjectName )
+        self.sgProjectName.setEnabled( False )
+
+        self.sgProjectId = nuke.String_Knob("Deadline_sgProjectId", "Project Id")
+        self.addKnob( self.sgProjectId )
+        self.sgProjectId.setEnabled( False )
+
+        self.sgEntityName = nuke.String_Knob("Deadline_sgEntityName", "Entity")
+        self.addKnob( self.sgEntityName )
+        self.sgEntityName.setEnabled( False )
+
+        self.sgEntityType = nuke.String_Knob("Deadline_sgEntityType", "Entity Type")
+        self.addKnob( self.sgEntityType )
+        self.sgEntityType.setEnabled( False )
+
+        self.sgEntityId = nuke.String_Knob("Deadline_sgEntityId", "Entity Id")
+        self.addKnob( self.sgEntityId )
+        self.sgEntityId.setEnabled( False )
+
+        self.sgVersionName = nuke.String_Knob("Deadline_sgVersionName", "Version Name")
+        self.addKnob( self.sgVersionName )
+
         # SG New Description
         self.sgDescription = nuke.String_Knob( "Deadline_sgDescription", "Description" )
         self.addKnob( self.sgDescription )
@@ -116,46 +145,16 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         ##########################################################################################
         ## Draft Options
         ##########################################################################################
-        
-        self.draftSeparator1 = nuke.Text_Knob( "Deadline_DraftSeparator1", "" )
-        self.addKnob( self.draftSeparator1 )
-        
-        # It should be by default
-        # createNewVersion
-        # submitDraftJob
-        # uploadToSG
-        # useQuickDraft ? (Should we? or should we create our own templates?)
-        
-#        self.createNewVersion = nuke.Boolean_Knob( "Deadline_CreateNewVersion", "Create New Version" )
-#        self.addKnob( self.createNewVersion )
-#        self.createNewVersion.setEnabled( False )
-#        self.createNewVersion.setTooltip( "If enabled, Deadline will connect to a new Version for this job." )
-#        self.createNewVersion.setValue( False )
 
-#        self.submitDraftJob = nuke.Boolean_Knob( "Deadline_SubmitDraftJob", "Submit Dependent Draft Job" )
-#        self.addKnob( self.submitDraftJob )
-#        self.submitDraftJob.setValue( False )
-
-#        self.uploadToShotgun = nuke.Boolean_Knob( "Deadline_UploadToShotgun", "Upload to Shotgun" )
-#        self.addKnob( self.uploadToShotgun )
-#        self.uploadToShotgun.setEnabled( False )
-#        self.uploadToShotgun.setTooltip( "If enabled, the Draft results will be uploaded to Shotgun when it is complete." )
-#        self.uploadToShotgun.setValue( True )
-
-#        self.useQuickDraft = nuke.Boolean_Knob("Deadline_DraftQuick", "Use Quick Draft")
-#        self.addKnob(self.useQuickDraft)
-#        self.useQuickDraft.setTooltip( "Whether to use controls to build a quick template options or custom ones." )
-#        self.useQuickDraft.setEnabled(False)
-        
         # WE SHOULD CHANGE THIS TO DRAFT QUALITY
-        self.draftTemplateCombo = nuke.Enumeration_Knob( "Deadline_draftTemplate", "Draft Quality", ["Quality 1", "Quality 2", "Quality 3"] )
-        self.addKnob( self.draftTemplateCombo )
-        self.draftTemplateCombo.setTooltip( "Select the draft quality" )
-        
+#        self.draftTemplateCombo = nuke.Enumeration_Knob( "Deadline_draftTemplate", "Draft Quality", ["Apple ProRes", "DNXHD", "H.264"] )
+#        self.addKnob( self.draftTemplateCombo )
+#        self.draftTemplateCombo.setTooltip( "Select the draft quality" )
+
     def ShowDialog( self ):
         return nukescripts.PythonPanel.showModalDialog( self )
     
-    
+    # listen to knobs changing
     def knobChanged( self, knob ): 
         if knob == self.frameList:
             self.frameListMode.setValue( "Custom" )
@@ -177,7 +176,65 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
                     self.frameList.setValue( str(startFrame) )
                 else:
                     self.frameList.setValue( str(startFrame) + "-" + str(endFrame) )
-            
+
+        # when the user press the connect button
+        # populate the Task Combo with the user tasks
+        if knob == self.sgConnectButton:
+            if self.sgUserName.value() == '':
+                nuke.message('You should write your SG account name')
+            else:
+
+                from simpleSgApi import simpleSgApi
+
+                self.sg = simpleSgApi();
+
+                self.sg.connect(self.sgUserName.value())
+                self.sgTasks = self.sg.getTasks()
+
+                tasksContent = []
+                for task in self.sgTasks:
+                    tasksContent.append(task['content'])
+
+                self.sgTaskCombo.setValues(tasksContent)
+
+        # when the user select a task in the task combo
+        # display the information
+        if knob == self.sgTaskCombo:
+            print ( "selected task %s" % self.sgTaskCombo.value() )
+            for task in self.sgTasks:
+                if self.sgTaskCombo.value() == task['content']:
+                    self.sgProjectName.setValue( task["project"]["name"] )
+                    self.sgProjectId.setValue( str( task["project"]["id"] ) )
+                    self.sgEntityName.setValue( task["entity"]["name"] )
+                    self.sgEntityId.setValue( str(task["entity"]["id"]) )
+                    self.sgEntityType.setValue( task["entity"]["type"] )
+                    self.sgTaskId.setValue( str(task["id"]) )
+
+                    # query the latest version name
+                    latestVersionName = self.sg.getLatestVersion( task )
+
+                    # default to v1 if there are no versions
+                    if latestVersionName is None:
+                        self.sgVersionName.setValue(task["content"] + '_v1')
+                    else:
+
+                        # separate the values
+                        newVersionSplitted = latestVersionName["code"].split('_')
+
+                        # get latest value (version number) and increment
+                        try:
+                            newVersionNumber = int(newVersionSplitted[-1].split('v')[1])
+                            newVersionNumber += 1
+
+                            # remove the version number from the string
+                            del newVersionSplitted[-1]
+
+                            newVersionName = "_".join(newVersionSplitted)
+
+                            self.sgVersionName.setValue( "%s_v%i" % (newVersionName, newVersionNumber) )
+                        except:
+                            self.sgVersionName.setValue('')
+
 
 # 
 def SubmitToDeadline( ):
@@ -187,11 +244,9 @@ def SubmitToDeadline( ):
     root = nuke.Root()
 
     # Check if the nk was saved
-#    if root.name() == "Root":
-#        noRoot = True
-#        if not studio:
-#            nuke.message( "The Nuke script must be saved before it can be submitted to Deadline." )
-#            return
+    if root.name() == "Root":
+        nuke.message( "The Nuke script must be saved before it can be submitted to Deadline." )
+        return
     
     nuke_projects = []
     valid_projects = []
@@ -234,21 +289,10 @@ def SubmitToDeadline( ):
                 endFrame = nuke.activeViewer().node().input(activeInput).frameRange().last()
             except:
                 pass
-        
-#        if startFrame == endFrame:
-#            DeadlineGlobals.initFrameList = str(startFrame)
-#        else:
-#            DeadlineGlobals.initFrameList = str(startFrame) + "-" + str(endFrame)
     else:
         if initCustomFrameList == None or initCustomFrameList.strip() == "":
             startFrame = nuke.Root().firstFrame()
             endFrame = nuke.Root().lastFrame()
-#            if startFrame == endFrame:
-#                DeadlineGlobals.initFrameList = str(startFrame)
-#            else:
-#                DeadlineGlobals.initFrameList = str(startFrame) + "-" + str(endFrame)
-#        else:
-#            DeadlineGlobals.initFrameList = initCustomFrameList.strip()
 
     # Spawn extra info
     extraInfo = [ "" ] * 10
@@ -277,44 +321,44 @@ def SubmitToDeadline( ):
     outputCount = 0
     
     # Check for errors and mistakes
-#    for node in writeNodes:
-#        reading = False
-#        if node.knob( 'reading' ):
-#            reading = node.knob( 'reading' ).value()
-#        
-#        # Need at least one write node that is enabled, and not set to read in as well.
-#        if not node.knob( 'disable' ).value() and not reading:
-#            outputCount = outputCount + 1
-#            filename = nuke.filename(node)
-#
-#            if filename == "":
-#                warningMessages = warningMessages + "No output path for write node '" + node.name() + "' is defined\n\n"
-#            else:
-#                fileType = node.knob( 'file_type' ).value()
-#                
-#                if filename == None:
-#                    warningMessages = warningMessages + "Output path for write node '" + node.name() + "' is empty\n\n"
-#                else:
-#                    if IsPathLocal( filename ):
-#                        warningMessages = warningMessages + "Output path for write node '" + node.name() + "' is local:\n" + filename + "\n\n"
-#                    if not HasExtension( filename ) and fileType.strip() == "":
-#                        warningMessages = warningMessages + "Output path for write node '%s' has no extension:\n%s\n\n"  % (node.name(), filename)
-#                    if not IsMovie( filename ) and not IsPadded( os.path.basename( filename ) ):
-#                        warningMessages = warningMessages + "Output path for write node '" + node.name() + "' is not padded:\n" + filename + "\n\n"
-#    
-#    # Warn if there are no write nodes.
-#    if outputCount == 0 and not noRoot:
-#        warningMessages = warningMessages + "At least one enabled write node that has 'read file' disabled is required to render\n\n"
-#    
-#    if len(nuke.views())  == 0:
-#        warningMessages = warningMessages + "At least one view is required to render\n\n"
-#    
-#    # If there are any warning messages, show them to the user.
-#    if warningMessages != "":
-#        warningMessages = warningMessages + "Do you still wish to submit this job to Deadline?"
-#        answer = nuke.ask( warningMessages )
-#        if not answer:
-#            return
+    for node in writeNodes:
+        reading = False
+        if node.knob( 'reading' ):
+            reading = node.knob( 'reading' ).value()
+
+        # Need at least one write node that is enabled, and not set to read in as well.
+        if not node.knob( 'disable' ).value() and not reading:
+            outputCount = outputCount + 1
+            filename = nuke.filename(node)
+
+            if filename == "":
+                warningMessages = warningMessages + "No output path for write node '" + node.name() + "' is defined\n\n"
+            else:
+                fileType = node.knob( 'file_type' ).value()
+
+                if filename == None:
+                    warningMessages = warningMessages + "Output path for write node '" + node.name() + "' is empty\n\n"
+                else:
+                    if IsPathLocal( filename ):
+                        warningMessages = warningMessages + "Output path for write node '" + node.name() + "' is local:\n" + filename + "\n\n"
+                    if not HasExtension( filename ) and fileType.strip() == "":
+                        warningMessages = warningMessages + "Output path for write node '%s' has no extension:\n%s\n\n"  % (node.name(), filename)
+                    if not IsMovie( filename ) and not IsPadded( os.path.basename( filename ) ):
+                        warningMessages = warningMessages + "Output path for write node '" + node.name() + "' is not padded:\n" + filename + "\n\n"
+
+    # Warn if there are no write nodes.
+    if outputCount == 0 and not noRoot:
+        warningMessages = warningMessages + "At least one enabled write node that has 'read file' disabled is required to render\n\n"
+
+    if len(nuke.views())  == 0:
+        warningMessages = warningMessages + "At least one view is required to render\n\n"
+
+    # If there are any warning messages, show them to the user.
+    if warningMessages != "":
+        warningMessages = warningMessages + "Do you still wish to submit this job to Deadline?"
+        answer = nuke.ask( warningMessages )
+        if not answer:
+            return
     
     print "Creating submission dialog..."
     
@@ -336,6 +380,9 @@ def SubmitToDeadline( ):
         if dialog.frameList.value().strip() == "":
             errorMessages = errorMessages + "No frame list has been specified.\n\n"
         
+        if dialog.sgUserName.value() == "" or dialog.sgTaskId.value() == "" or dialog.sgVersionName.value() == "" :
+            errorMessages = errorMessages + "There are no Shotgun Information available. Please complete the missing information."
+
         # If submitting separate write nodes, make sure there are jobs to submit
         if dialog.selectedOnly.value():
             validNodeFound = False
@@ -360,11 +407,6 @@ def SubmitToDeadline( ):
             if not validNodeFound:
                 if dialog.selectedOnly.value():
                     errorMessages = errorMessages + "There are no selected write nodes, so there are no jobs to submit.\n\n"
-        
-#        # Check Draft template path
-#        if dialog.submitDraftJob.value():
-#            if not os.path.exists( dialog.templatePath.value() ):
-#                errorMessages += "Draft job submission is enabled, but a Draft template has not been selected (or it does not exist). Either select a valid template, or disable Draft job submission.\n\n"
                     
         # Alert the user of any errors.
         if errorMessages != "":
@@ -431,7 +473,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "Group=%s\n"                             % "none"                    ) )
     fileHandle.write( EncodeAsUTF16String( "Priority=%s\n"                          % 50                        ) )
     fileHandle.write( EncodeAsUTF16String( "MachineLimit=%s\n"                      % 0                         ) )
-    fileHandle.write( EncodeAsUTF16String( "TaskTimeoutMinutes=%s\n"                % 0                         ) )
+    fileHandle.write( EncodeAsUTF16String( "TaskTimeoutMinutes=%s\n"                % 15                         ) )
     fileHandle.write( EncodeAsUTF16String( "EnableAutoTimeout=%s\n"                 % True                      ) )
     fileHandle.write( EncodeAsUTF16String( "ConcurrentTasks=%s\n"                   % 1                         ) )
     fileHandle.write( EncodeAsUTF16String( "LimitConcurrentTasksToNumberOfCpus=%s\n" % True                     ) )
@@ -447,137 +489,125 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     extraKVPIndex = 0
     index = 0
 #    
-#    for v in viewsToRender:
-#        for tempNode in writeNodes:
-#            if not tempNode.knob( 'disable' ).value():
-#                enterLoop = True
-#                if dialog.selectedOnly.value():
-#                    enterLoop = enterLoop and IsNodeOrParentNodeSelected(tempNode)
-#                
-#                if enterLoop:
-#                    #gets the filename/proxy filename and evaluates TCL + vars, but *doesn't* swap frame padding
-#                    fileValue = nuke.filename( tempNode )
-#
-#                    if ( root.proxy() and tempNode.knob( 'proxy' ).value() != "" ):
-#                        evaluatedValue = tempNode.knob( 'proxy' ).evaluate(view=v)
-#                    else:
-#                        evaluatedValue = tempNode.knob( 'file' ).evaluate(view=v)
-#
-#                    if fileValue != None and fileValue != "" and evaluatedValue != None and evaluatedValue != "":
-#                        tempPath, tempFilename = os.path.split( evaluatedValue )
-#                        
-#                        if IsPadded( os.path.basename( fileValue ) ):
-#                            tempFilename = GetPaddedPath( tempFilename )
-#
-#                        paddedPath = os.path.join( tempPath, tempFilename )
-#                        
-#                        #Handle escape character cases
-#                        paddedPath = paddedPath.replace( "\\", "/" )
-#
-#                        fileHandle.write( EncodeAsUTF16String( "OutputFilename%s=%s\n" % (index, paddedPath ) ) )
-#
-#                        #Check if the Write Node will be modifying the output's Frame numbers
-#                        if tempNode.knob( 'frame_mode' ):
-#                            if ( tempNode.knob( 'frame_mode' ).value() == "offset" ):
-#                                fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=OutputFrameOffset%s=%s\n" % ( extraKVPIndex, index, str( int( tempNode.knob( 'frame' ).value() ) ) ) ) )
-#                                extraKVPIndex += 1
-#                            elif ( tempNode.knob( 'frame_mode' ).value() == "start at" or tempNode.knob( 'frame_mode' ).value() == "start_at"):
-#                                franges = nuke.FrameRanges( tempFrameList )
-#                                fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=OutputFrameOffset%s=%s\n" % ( extraKVPIndex, index, str( int( tempNode.knob( 'frame' ).value() ) - franges.minFrame() ) ) ) )
-#                                extraKVPIndex += 1
-#                            else:
-#                                #TODO: Handle 'expression'? Would be much harder
-#                                pass
-#
-#                        index = index + 1        
+    for v in viewsToRender:
+        for tempNode in writeNodes:
+            if not tempNode.knob( 'disable' ).value():
+                enterLoop = True
+                if dialog.selectedOnly.value():
+                    enterLoop = enterLoop and IsNodeOrParentNodeSelected(tempNode)
+
+                if enterLoop:
+                    #gets the filename/proxy filename and evaluates TCL + vars, but *doesn't* swap frame padding
+                    fileValue = nuke.filename( tempNode )
+
+                    if ( root.proxy() and tempNode.knob( 'proxy' ).value() != "" ):
+                        evaluatedValue = tempNode.knob( 'proxy' ).evaluate(view=v)
+                    else:
+                        evaluatedValue = tempNode.knob( 'file' ).evaluate(view=v)
+
+                    if fileValue != None and fileValue != "" and evaluatedValue != None and evaluatedValue != "":
+                        tempPath, tempFilename = os.path.split( evaluatedValue )
+
+                        if IsPadded( os.path.basename( fileValue ) ):
+                            tempFilename = GetPaddedPath( tempFilename )
+
+                        paddedPath = os.path.join( tempPath, tempFilename )
+
+                        #Handle escape character cases
+                        paddedPath = paddedPath.replace( "\\", "/" )
+
+                        fileHandle.write( EncodeAsUTF16String( "OutputFilename%s=%s\n" % (index, paddedPath ) ) )
+
+                        #Check if the Write Node will be modifying the output's Frame numbers
+                        if tempNode.knob( 'frame_mode' ):
+                            if ( tempNode.knob( 'frame_mode' ).value() == "offset" ):
+                                fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=OutputFrameOffset%s=%s\n" % ( extraKVPIndex, index, str( int( tempNode.knob( 'frame' ).value() ) ) ) ) )
+                                extraKVPIndex += 1
+                            elif ( tempNode.knob( 'frame_mode' ).value() == "start at" or tempNode.knob( 'frame_mode' ).value() == "start_at"):
+                                franges = nuke.FrameRanges( tempFrameList )
+                                fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=OutputFrameOffset%s=%s\n" % ( extraKVPIndex, index, str( int( tempNode.knob( 'frame' ).value() ) - franges.minFrame() ) ) ) )
+                                extraKVPIndex += 1
+                            else:
+                                #TODO: Handle 'expression'? Would be much harder
+                                pass
+
+                        index = index + 1
 
     # Write the shotgun data.
-    groupBatch = False
-#    if dialog.createNewVersion.value():
-#        # we should get all this information from SG
-#        # at the begginng with HS
-#        if 'TaskName' in dialog.shotgunKVPs:
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfo0=%s\n" % dialog.shotgunKVPs['TaskName'] ) )
-#
-#        if 'ProjectName' in dialog.shotgunKVPs:
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfo1=%s\n" % dialog.shotgunKVPs['ProjectName'] ) )
-#
-#        if 'EntityName' in dialog.shotgunKVPs:
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfo2=%s\n" % dialog.shotgunKVPs['EntityName'] ) )
-#
-#        if 'VersionName' in dialog.shotgunKVPs:
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfo3=%s\n" % dialog.shotgunKVPs['VersionName'] ) )
-#
-#        if 'Description' in dialog.shotgunKVPs:
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfo4=%s\n" % dialog.shotgunKVPs['Description'] ) )
-#
-#        if 'UserName' in dialog.shotgunKVPs:
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfo5=%s\n" % dialog.shotgunKVPs['UserName'] ) )
-#
-#        #dump the rest in as KVPs
-#        for key in dialog.shotgunKVPs:
-#            if key != "DraftTemplate":
-#                fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=%s=%s\n" % ( extraKVPIndex, key, dialog.shotgunKVPs[key] ) ) )
-#                extraKVPIndex += 1
-#
-#        if dialog.draftCreateMovie.value():
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%s=Draft_CreateSGMovie=True\n" % extraKVPIndex ) )
-#            extraKVPIndex += 1
-#            groupBatch = True
-#
-#        if dialog.draftCreateFilmStrip.value():
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%s=Draft_CreateSGFilmstrip=True\n" % extraKVPIndex ) )
-#            extraKVPIndex += 1
-#            groupBatch = True
+    groupBatch = True
 
-    #Draft stuff
-#    if dialog.submitDraftJob.value():
-#        draftNode = node
-#        #TODO: Need to figure out if we want to do something else in this case (all write nodes being submitted in one job)
-#        if node == None:
-#            draftNode = writeNodes[0] 
-#        
-#        if dialog.useQuickDraft.value():
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=SubmitQuickDraft=True\n" % (extraKVPIndex) ) )
-#            extraKVPIndex += 1
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtension=%s\n" % (extraKVPIndex, FormatsDict[dialog.draftFormat.value()][0]) ) )
-#            extraKVPIndex += 1
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftType=%s\n" % (extraKVPIndex, FormatsDict[dialog.draftFormat.value()][1]) ) )
-#            extraKVPIndex += 1
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftResolution=%s\n" % (extraKVPIndex, ResolutionsDict[dialog.draftResolution.value()]) ) )
-#            extraKVPIndex += 1
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftCodec=%s\n" % (extraKVPIndex, dialog.draftCodec.value() ) ) )
-#            extraKVPIndex += 1
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftQuality=%s\n" % (extraKVPIndex, dialog.draftQuality.value() ) ) )
-#            extraKVPIndex += 1
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameRate=%s\n" % (extraKVPIndex, dialog.draftFrameRate.value() ) ) )
-#            extraKVPIndex += 1
-#        else:
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftTemplate=%s\n" % (extraKVPIndex, dialog.templatePath.value() ) ) )
-#            extraKVPIndex += 1
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftUsername=%s\n" % (extraKVPIndex, dialog.draftUser.value() ) ) )
-#            extraKVPIndex += 1
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftEntity=%s\n" % (extraKVPIndex, dialog.draftEntity.value()) ) )
-#            extraKVPIndex += 1
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftVersion=%s\n" % (extraKVPIndex, dialog.draftVersion.value()) ) )
-#            extraKVPIndex += 1
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameWidth=%s\n" % (extraKVPIndex, draftNode.width()) ) )
-#            extraKVPIndex += 1
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameHeight=%s\n" % (extraKVPIndex, draftNode.height()) ) )
-#            extraKVPIndex += 1
-#            fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtraArgs=%s\n" % (extraKVPIndex, dialog.draftExtraArgs.value()) ) )
-#            extraKVPIndex += 1
-#            
-#        fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftUploadToShotgun=%s\n" % (extraKVPIndex, str(dialog.uploadToShotgun.enabled() and dialog.uploadToShotgun.value())) ) )
-#        extraKVPIndex += 1
-#        extraKVPIndex += 1
-#        
-#        groupBatch = True
-#        
-#    if groupBatch:
-#        fileHandle.write( EncodeAsUTF16String( "BatchName=%s\n" % batchName ) )
-#    
-#    fileHandle.write( EncodeAsUTF16String( "IncludeEnvironment=%s\n"        % True ) ) 
+    # Creating a new version in SG
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfo0=%s\n" % dialog.sgTaskCombo.value() ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfo1=%s\n" % dialog.sgProjectName.value() ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfo2=%s\n" % dialog.sgEntityName.value() ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfo3=%s\n" % dialog.sgVersionName.value() ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfo4=%s\n" % dialog.sgDescription.value() ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfo5=%s\n" % dialog.sgUserName.value() ) )
+
+
+    # Draft Stuff
+    extraKVPIndex = 0
+
+
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=UserName=%s\n"      % (extraKVPIndex, dialog.sgUserName.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=Description=%s\n"   % (extraKVPIndex, dialog.sgDescription.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=ProjectName=%s\n"   % (extraKVPIndex, dialog.sgProjectName.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=EntityName=%s\n"    % (extraKVPIndex, dialog.sgEntityName.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=EntityType=%s\n"    % (extraKVPIndex, dialog.sgEntityType.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=VersionName=%s\n"   % (extraKVPIndex, dialog.sgVersionName.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=ProjectId=%s\n"     % (extraKVPIndex, dialog.sgProjectId.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=TaskId=%s\n"        % (extraKVPIndex, dialog.sgTaskId.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=TaskName=%s\n"      % (extraKVPIndex, dialog.sgTaskCombo.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=EntityId=%s\n"      % (extraKVPIndex, dialog.sgEntityId.value() ) ) )
+    extraKVPIndex += 1
+
+
+    # Instead of using the quickdraft use the template, so we can burn in the info
+    draftTemplateAbsolutePath = os.path.join(os.path.dirname(__file__), 'draft/draftTemplate.py')
+
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftTemplate=%s\n" % (extraKVPIndex, draftTemplateAbsolutePath ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftUsername=%s\n" % (extraKVPIndex, dialog.sgUserName.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftEntity=%s\n" % (extraKVPIndex, dialog.sgTaskCombo.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftVersion=%s\n" % (extraKVPIndex, dialog.sgVersionName.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameWidth=%d\n" % (extraKVPIndex, 1280 ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameHeight=%d\n" % (extraKVPIndex, 720 ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftRatio=%s\n" % (extraKVPIndex, "2.35" ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtraArgs=%s\n" % (extraKVPIndex, "" ) ) )
+    extraKVPIndex += 1
+
+    # This line renders a mov for shotgun using the Draft_CreateShotgunMovie.py from the repo
+#    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%s=Draft_CreateSGMovie=True\n" % extraKVPIndex ) )
+#    extraKVPIndex += 1
+
+#     This line renders a filmstrip for shotgun
+#    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%s=Draft_CreateSGFilmstrip=True\n" % extraKVPIndex ) )
+#    extraKVPIndex += 1
+
+    # This line uploads the movie to shotgun
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftUploadToShotgun=%s\n" % (extraKVPIndex,  True ) ) )
+    extraKVPIndex += 1
+
+
+    fileHandle.write( EncodeAsUTF16String( "BatchName=%s\n" % dialog.jobName.value() ) )
+
+
+    # ENV KEYS
     fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (0, "THEBOATFOLDER",os.environ["THEBOATFOLDER"]) ) ) 
     fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (1, "SHOT",os.environ["SHOT"]) ) ) 
     fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (2, "NUKE_PATH",os.environ["NUKE_PATH"]) ) ) 
@@ -638,7 +668,8 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     args = []
     args.append( jobInfoFile.encode(locale.getpreferredencoding() ) )
     args.append( pluginInfoFile.encode(locale.getpreferredencoding() ) )
-    args.append( root.name() ) # SUBMIT SCENE
+    args.append( root.name() ) # SUBMIT NK
+    args.append( (os.path.join(os.path.dirname(__file__), "draft/slateBackground.dpx") ) )  # SUBMIT SLATE FRAME
         
     tempResults = ""
     
@@ -669,6 +700,9 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
         nuke.executeInMainThread( nuke.message, tempResults )
     
     return tempResults
+
+
+
 
 def IsNodeOrParentNodeSelected( node ):
     if node.isSelected():
@@ -763,6 +797,9 @@ def EncodeAsUTF16String( unicodeString ):
 
 def CallDeadlineCommand( arguments, hideWindow=True ):
     # On OSX, we look for the DEADLINE_PATH file. On other platforms, we use the environment variable.
+
+#    print "STARTING CallDeadlineCommand " +  str ( datetime.datetime.now().time() )
+
     if os.path.exists( "/Users/Shared/Thinkbox/DEADLINE_PATH" ):
         with open( "/Users/Shared/Thinkbox/DEADLINE_PATH" ) as f: deadlineBin = f.read().strip()
         deadlineCommand = deadlineBin + "/deadlinecommand"
@@ -800,4 +837,5 @@ def CallDeadlineCommand( arguments, hideWindow=True ):
     
     output = proc.stdout.read()
     
+#    print "FINISHING CallDeadlineCommand " + str ( datetime.datetime.now().time() )
     return output
