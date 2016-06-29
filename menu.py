@@ -6,7 +6,6 @@
 
 import nuke, os, sys, re
 # dont do anything if the env is not set
-
 if ( not os.environ.get("THEBOATFOLDER") == None ):
     shotPath = os.environ["THEBOATFOLDER"]+'/'+os.environ["JOB"]+'/'+os.environ["SHOT"]
     nuke.addFavoriteDir(os.environ["SHOT"], shotPath)
@@ -58,22 +57,10 @@ if ( not os.environ.get("THEBOATFOLDER") == None ):
     nuke.pluginAddPath('scripts/deadline')
     import hsNukeToDeadline
 
-    #menubar = nuke.menu("Nuke")
-    #tbmenu = menubar.addMenu("Render")
-    #tbmenu.addCommand("Render on the boat's farm...", SubmitNukeToDeadline.SubmitToDeadline, "")
-
-    #Deadline Button
+    # HS Submit to Deadline Button
     theboatNodes.addCommand("hsNukeToDeadline...", hsNukeToDeadline.SubmitToDeadline, icon= theBoatConfigFolder+'/icons/deadlineIcon.png')
-    #
-    #try:
-    #    if nuke.env[ 'studio' ]:
-    #        import DeadlineNukeFrameServerClient
-    #        tbmenu.addCommand("Reserve Frame Server Slaves", DeadlineNukeFrameServerClient.main, "")
-    #except:
-    #    pass
-#
-#
-#
+
+
 #    import DeadlineNukeClient
 #    menubar = nuke.menu("Nuke")
 #    tbmenu = menubar.addMenu("&Thinkbox")
