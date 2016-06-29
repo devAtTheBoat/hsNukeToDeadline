@@ -8,3 +8,5 @@
 /### theboatConfigFolder
 /fonts
 *.pyc
+/elements/*
+*.job
