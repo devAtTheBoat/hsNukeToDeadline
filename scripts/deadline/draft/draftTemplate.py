@@ -39,9 +39,13 @@ expectedTypes = {
     "entity"    : '<string>',
     "projectRatio"  : '<float>',
     "projectName"   : '<string>',
-    "projectDesc"   : '<string>'
+    "projectDesc"   : '<string>',
+    "projectFramerate"      : '<int>',
+    "projectCodec"          : '<string>',
+    "projectAppendSlate"    : '<string>',
+    "projectBurnInInfo"     : '<string>',
+    "projectBurnInMask"     : '<string>',
 }
-
 params = DraftParamParser.ParseCommandLine( expectedTypes, sys.argv )
 frames = DraftParamParser.FrameRangeToFrames( params['frameList'] )
 
@@ -50,7 +54,65 @@ outWidth = int(params['width'])
 outHeight = int(params['height'])
 
 # Encode the slate frames at the start of the video
-toCodec = "H264"
+toCodec = params['projectCodec']
+framerate = params["projectFramerate"]
+
+#
+# Initialize the video encoder.
+#
+print "Creating {3} video encoder ({0}x{1} @ {2}fps)".format( outWidth, outHeight, framerate,  toCodec)
+# Create a Draft.ImageInfo object used to extract a Draft.Timecode object
+imageInfo = Draft.ImageInfo()
+firstFile = ReplaceFilenameHashesWithNumber( inputPath, frames[0] )
+firstFrame = Draft.Image.ReadFromFile( firstFile, imageInfo )
+
+# If timecode is found, specify the timecode parameter when creating the encoder
+print ("The first frame timecode starts at: %s" % imageInfo.timecode)
+if (imageInfo.timecode):
+    if params['projectAppendSlate'] == "True":
+        # If the slate is appended, the initial TC should be one frame less than the actual frame
+        firstTimecode = str(imageInfo.timecode).split(":") # "12:40:10:15"
+        firstTimecodeHour = firstTimecode[0]
+        firstTimecodeMinutes = firstTimecode[1]
+        firstTimecodeSeconds = firstTimecode[2]
+        firstTimecodeFrames = firstTimecode[3]
+
+        if ( firstTimecodeFrames == "00" ):
+            firstTimecodeFrames = str( int(framerate) - 1 )
+
+            if ( firstTimecodeSeconds == "00" ):
+                firstTimecodeSeconds = "59"
+
+                if ( firstTimecodeMinutes == "00" ):
+                    firstTimecodeMinutes = "59"
+
+                    if ( firstTimecodeHour == "00" ):
+                        firstTimecodeHour = "23"
+                    else:
+                        firstTimecodeHour = str(int(firstTimecodeHour) - 1).zfill(2)
+                else:
+                    firstTimecodeMinutes = str(int(firstTimecodeMinutes) - 1).zfill(2)
+            else:
+                firstTimecodeSeconds = str(int(firstTimecodeSeconds) - 1).zfill(2)
+        else:
+            firstTimecodeFrames = str(int(firstTimecodeFrames) - 1).zfill(2)
+
+        slateTimecode = "%s:%s:%s:%s" % (firstTimecodeHour,firstTimecodeMinutes,firstTimecodeSeconds,firstTimecodeFrames)
+
+        print "The slate timecode starts at: %s" % slateTimecode
+
+        slateTimecode = Draft.Timecode( slateTimecode )
+
+        # Embed the encoder with the new timecode
+        encoder = Draft.VideoEncoder( params['outFile'], fps=framerate, width=outWidth, height=outHeight, quality=80, codec=toCodec , timecode=slateTimecode)
+    else:
+
+        # Embed the encoder with the actual timecode
+        encoder = Draft.VideoEncoder( params['outFile'], fps=framerate, width=outWidth, height=outHeight, quality=80, codec=toCodec , timecode=imageInfo.timecode)
+else:
+
+    # Dont embed TC
+    encoder = Draft.VideoEncoder( params['outFile'], fps=framerate, width=outWidth, height=outHeight, quality=80, codec=toCodec )
 
 #
 # Create the anotations
@@ -64,59 +126,52 @@ annotationInfo.PointSize = int( outHeight * 0.045 )
 #
 # Creating the burn in data
 #
-print "Creating the burn in data"
-# Set up the text for the slate frame
-slateText = [("JOB", params["projectName"]), ("SHOT", params["entity"]), ("VERSION", params['version']), ("FRAMES", params['frameList']), ("ARTIST", params['username']), ("DATE", datetime.datetime.now().strftime("%m/%d/%Y") )]
-
-slateAbsolutePath = os.path.join('/theboat/_config/scripts/deadline/draft/slateBackground.dpx')
-slateFrame = Draft.Image.ReadFromFile( slateAbsolutePath )
-
 ## For the composite operations
 compOperation = Draft.CompositeOperator.OverCompositeOp
 
+if params['projectAppendSlate'] == "True":
+    print "Creating the burn in data"
+    # Set up the text for the slate frame
+    slateText = [("JOB", params["projectName"]), ("SHOT", params["entity"]), ("VERSION", params['version']), ("FRAMES", params['frameList']), ("ARTIST", params['username']), ("DATE", datetime.datetime.now().strftime("%m/%d/%Y") )]
 
-for i in range( 0, len( slateText ) ):
-    txtImg = Draft.Image.CreateAnnotation( slateText[i][0] + ": ", annotationInfo )
-    slateFrame.CompositeWithPositionAndAnchor( txtImg, 0.18, 0.7 - (i * 0.06), Draft.Anchor.SouthEast, compOperation )
+    slateAbsolutePath = os.path.join('/theboat/_config/scripts/deadline/draft/slateBackground.dpx')
+    slateFrame = Draft.Image.ReadFromFile( slateAbsolutePath )
 
-    txtImg = Draft.Image.CreateAnnotation( slateText[i][1], annotationInfo )
-    slateFrame.CompositeWithPositionAndAnchor( txtImg, 0.18, 0.7 - (i * 0.06), Draft.Anchor.SouthWest, compOperation )
+    for i in range( 0, len( slateText ) ):
+        txtImg = Draft.Image.CreateAnnotation( slateText[i][0] + ": ", annotationInfo )
+        slateFrame.CompositeWithPositionAndAnchor( txtImg, 0.18, 0.7 - (i * 0.06), Draft.Anchor.SouthEast, compOperation )
 
-#
-# Initialize the video encoder.
-#
-print "Creating {3} video encoder ({0}x{1} @ {2}fps)".format( outWidth, outHeight, 24,  toCodec)
-#encoder = Draft.VideoEncoder( params['outFile'] , 24, width=outWidth, height=outHeight, codec=toCodec )
-encoder = Draft.VideoEncoder( params['outFile'], fps=24, width=outWidth, height=outHeight, quality=80, codec=toCodec )
+        txtImg = Draft.Image.CreateAnnotation( slateText[i][1], annotationInfo )
+        slateFrame.CompositeWithPositionAndAnchor( txtImg, 0.18, 0.7 - (i * 0.06), Draft.Anchor.SouthWest, compOperation )
 
-#
-# Create the slate frame
-#
-print "Creating the slate frame"
-# Hold for 1 frame @ 24fps
-#numberOfSlateFrames = 1
-#for i in range( 0, numberOfSlateFrames ):
-encoder.EncodeNextFrame( slateFrame )
+    #
+    # Create the slate frame
+    #
+    print "Creating the slate frame"
+    # Hold for 1 frame @ 24fps
+    #numberOfSlateFrames = 1
+    #for i in range( 0, numberOfSlateFrames ):
+    encoder.EncodeNextFrame( slateFrame )
 
 #
 # Create semi transparent mask
 #
+if params['projectBurnInMask'] == "True":
+    print "Creating semi transparent mask"
 
-print "Creating semi transparent mask"
+    # Create the semi-transparent mask
+    ratio = float(params['projectRatio']) # The value 2.35 can be adjusted to fit your project's needs
+    maskRectHeight = int( round( ( outHeight - outWidth / ratio ) / 2 ) )
+    maskRect = Draft.Image.CreateImage( outWidth, maskRectHeight )
+    maskRect.SetChannel( 'A', 0.3 ) # The value 0.3 can be adjusted, higher the value, darker the mask
 
-# Create the semi-transparent mask
-ratio = float(params['projectRatio']) # The value 2.35 can be adjusted to fit your project's needs
-maskRectHeight = int( round( ( outHeight - outWidth / ratio ) / 2 ) )
-maskRect = Draft.Image.CreateImage( outWidth, maskRectHeight )
-maskRect.SetChannel( 'A', 0.3 ) # The value 0.3 can be adjusted, higher the value, darker the mask
+    mask = Draft.Image.CreateImage( outWidth, outHeight )
+    mask.SetChannel( 'A', 0 )
 
-mask = Draft.Image.CreateImage( outWidth, outHeight )
-mask.SetChannel( 'A', 0 )
-
-# Upper mask
-mask.CompositeWithAnchor( maskRect, Draft.Anchor.North, compOperation )
-# Lower mask
-mask.CompositeWithAnchor( maskRect, Draft.Anchor.South, compOperation )
+    # Upper mask
+    mask.CompositeWithAnchor( maskRect, Draft.Anchor.North, compOperation )
+    # Lower mask
+    mask.CompositeWithAnchor( maskRect, Draft.Anchor.South, compOperation )
 
 # progress calculation var
 progressCounter = 0
@@ -125,45 +180,31 @@ lastPercentage = -1
 #
 # Mask Anotations
 #
-annotationInfo.Color = Draft.ColorRGBA( 1.0, 1.0, 1.0, 1.0 )
-annotationInfo.PointSize = int( outHeight * 0.020 ) # font size
-#annotationInfo.FontType = "Helvetica"
-annotationOffset = int( outHeight * 0.020 )*2;
+if params['projectBurnInInfo'] == "True":
+    annotationInfo.Color = Draft.ColorRGBA( 1.0, 1.0, 1.0, 1.0 )
+    annotationInfo.PointSize = int( outHeight * 0.020 ) # font size
+    #annotationInfo.FontType = "Helvetica"
+    annotationOffset = int( outHeight * 0.020 )*2;
 
-# Anchor Points
-northWest = {"x" : annotationOffset, "y" : annotationOffset}
-southWest = {"x" : annotationOffset, "y" : outHeight-annotationOffset}
-northEast = {"x" : outWidth - annotationOffset, "y" : annotationOffset}
-southEast = {"x" : outWidth - annotationOffset, "y" : outHeight-annotationOffset}
-#
-## North West annotation
-#projectNameAnnotation = Draft.Image.CreateAnnotation( params['projectName'] , annotationInfo)
-#dateAnnotation = Draft.Image.CreateAnnotation(  datetime.datetime.now().strftime("%m/%d/%Y"), annotationInfo )
-#
-## North East annotation
-#studioNameAnnotation = Draft.Image.CreateAnnotation( "VFXBOAT", annotationInfo ) # we should put the logo here
-#
-## South West annotation
-## filaname - size => this annotation is made in the for loop
-#descriptionAnnotation = Draft.Image.CreateAnnotation( params['projectDesc'] , annotationInfo)
-#
-## South East annotation
-## frame number => this annotation is made up in the for loop
-#artistAnnotation = Draft.Image.CreateAnnotation( params['username'], annotationInfo )
+    # Anchor Points
+    northWest = {"x" : annotationOffset, "y" : annotationOffset}
+    southWest = {"x" : annotationOffset, "y" : outHeight-annotationOffset}
+    northEast = {"x" : outWidth - annotationOffset, "y" : annotationOffset}
+    southEast = {"x" : outWidth - annotationOffset, "y" : outHeight-annotationOffset}
 
-# North West annotation
-projectNameAndDateAnnotation = Draft.Image.CreateAnnotation( params['projectName'] +"\n"+ datetime.datetime.now().strftime("%m/%d/%Y"), annotationInfo)
+    # North West annotation
+    projectNameAndDateAnnotation = Draft.Image.CreateAnnotation( params['projectName'] +"\n"+ datetime.datetime.now().strftime("%m/%d/%Y"), annotationInfo)
 
-# North East annotation
-studioNameAnnotation = Draft.Image.CreateAnnotation( "VFXBOAT", annotationInfo ) # we should put the logo here
+    # North East annotation
+    studioNameAnnotation = Draft.Image.CreateAnnotation( "VFXBOAT", annotationInfo ) # we should put the logo here
 
-# South West annotation
-# filaname - size => this annotation is made in the for loop
-descriptionAnnotation = Draft.Image.CreateAnnotation( params['projectDesc'] , annotationInfo)
+    # South West annotation
+    # filaname - size => this annotation is made in the for loop
+    descriptionAnnotation = Draft.Image.CreateAnnotation( params['projectDesc'].replace("%20", " ") , annotationInfo)
 
-# South East annotation
-# frame number => this annotation is made up in the for loop
-artistAnnotation = Draft.Image.CreateAnnotation( params['username'], annotationInfo )
+    # South East annotation
+    # frame number => this annotation is made up in the for loop
+    artistAnnotation = Draft.Image.CreateAnnotation( params['username'], annotationInfo )
 
 #
 # Processing the input images
@@ -181,53 +222,37 @@ for frameNum in frames:
         print "WARNING: Resizing image from {0}x{1} to {2}x{3}".format( frame.width, frame.height, outWidth, outHeight )
         frame.Resize( outWidth, outHeight, 'height' )
 
-    # Add the semi-transparent mask
-    print "Add the semi-transparent mask"
-    frame.Composite( mask, 0, 0, compOperation )
+    if params['projectBurnInMask'] == "True":
+        # Add the semi-transparent mask
+        print "Add the semi-transparent mask"
+        print "Channel names for frame:", frame.GetChannelNames()
+        print "Channel names for mask:", mask.GetChannelNames()
 
-    # Add burn ins
-    # North West
-    print "Add burn ins: North West"
-    frame.CompositeWithAnchor( projectNameAndDateAnnotation , Draft.Anchor.NorthWest, compOperation )
 
-    # North East
-    print "Add burn ins: North East"
-    frame.CompositeWithAnchor( studioNameAnnotation  , Draft.Anchor.NorthEast, compOperation )
+        frame.Composite( mask, 0, 0, compOperation )
 
-    # South West annotation
-    print "Add burn ins: South West"
-    filenameAndSizeAnnotation = Draft.Image.CreateAnnotation( ("%s - %sx%s\n" % (inFile, frame.width, frame.height)), annotationInfo ) # added a \n for line break
-    frame.CompositeWithAnchor( filenameAndSizeAnnotation, Draft.Anchor.SouthWest, compOperation )
-    frame.CompositeWithAnchor( descriptionAnnotation , Draft.Anchor.SouthWest, compOperation )
+    if params['projectBurnInInfo'] == "True":
+        # Add burn ins
+        # North West
+        print "Add burn ins: North West"
+        frame.CompositeWithAnchor( projectNameAndDateAnnotation , Draft.Anchor.NorthWest, compOperation )
 
-    # South East annotation
-    print "Add burn ins: South East"
-    frameNumAnnotation = Draft.Image.CreateAnnotation( ("%s\n" % (frameNum) ), annotationInfo ) # added a \n for line break
-    frame.CompositeWithAnchor( frameNumAnnotation  , Draft.Anchor.SouthEast, compOperation )
-    frame.CompositeWithAnchor( artistAnnotation  , Draft.Anchor.SouthEast, compOperation )
-#
-#    # Add burn ins
-#    # North West
-#    print "Add burn ins: North West"
-#    frame.CompositeWithPositionAndAnchor( projectNameAnnotation     , northWest["x"], northWest["y"], Draft.Anchor.North, compOperation )
-#    frame.CompositeWithPositionAndAnchor( dateAnnotation            , northWest["x"], northWest["y"], Draft.Anchor.South, compOperation )
-#
-#    # North East
-#    print "Add burn ins: North East"
-#    frame.CompositeWithPositionAndAnchor( studioNameAnnotation      , northEast["x"], northEast["y"], Draft.Anchor.NorthEast, compOperation )
-#
-#    # South West annotation
-#    print "Add burn ins: South West"
-#    filenameAndSizeAnnotation = Draft.Image.CreateAnnotation( ("%s - %sx%s" % (inFile, frame.width, frame.height)), annotationInfo )
-#    frame.CompositeWithPositionAndAnchor( filenameAndSizeAnnotation ,southWest["x"], southWest["y"], Draft.Anchor.North, compOperation )
-#    frame.CompositeWithPositionAndAnchor( descriptionAnnotation     ,southWest["x"], southWest["y"], Draft.Anchor.South, compOperation )
-#
-#    # South East annotation
-#    print "Add burn ins: South East"
-#    frameNumAnnotation = Draft.Image.CreateAnnotation( ("%s" % (frameNum) ), annotationInfo )
-#    frame.CompositeWithPositionAndAnchor( frameNumAnnotation        ,southEast["x"], southEast["y"], Draft.Anchor.NorthEast, compOperation )
-#    frame.CompositeWithPositionAndAnchor( artistAnnotation          ,southEast["x"], southEast["y"], Draft.Anchor.SouthEast, compOperation )
-#
+        # North East
+        print "Add burn ins: North East"
+        frame.CompositeWithAnchor( studioNameAnnotation  , Draft.Anchor.NorthEast, compOperation )
+
+        # South West annotation
+        print "Add burn ins: South West"
+        filenameAndSizeAnnotation = Draft.Image.CreateAnnotation( ("%s - %sx%s\n" % (inFile, frame.width, frame.height)), annotationInfo ) # added a \n for line break
+        frame.CompositeWithAnchor( filenameAndSizeAnnotation, Draft.Anchor.SouthWest, compOperation )
+        frame.CompositeWithAnchor( descriptionAnnotation , Draft.Anchor.SouthWest, compOperation )
+
+        # South East annotation
+        print "Add burn ins: South East"
+        frameNumAnnotation = Draft.Image.CreateAnnotation( ("%s\n" % (frameNum) ), annotationInfo ) # added a \n for line break
+        frame.CompositeWithAnchor( frameNumAnnotation  , Draft.Anchor.SouthEast, compOperation )
+        frame.CompositeWithAnchor( artistAnnotation  , Draft.Anchor.SouthEast, compOperation )
+
     encoder.EncodeNextFrame( frame )
 
     progressCounter = progressCounter + 1
