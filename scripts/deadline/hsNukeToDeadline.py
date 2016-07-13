@@ -106,10 +106,13 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         # Get the jobname from the os.environ
         sgTask = os.environ["TASK"]
         self.sgTaskCombo = nuke.Enumeration_Knob( "Deadline_sgTasks", "Tasks", [] )
+        self.sgTaskCombo.setValues(["Connect to SG"])
         self.addKnob( self.sgTaskCombo )
         self.sgTaskCombo.setTooltip( "Select your task" )
         
+
         self.sgTaskId = nuke.String_Knob("Deadline_sgTaskId", "Task Id")
+        self.sgTaskId.setFlag(nuke.INVISIBLE)
         self.addKnob( self.sgTaskId )
         self.sgTaskId.setEnabled( False )
 
@@ -118,6 +121,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         self.sgProjectName.setEnabled( False )
 
         self.sgProjectId = nuke.String_Knob("Deadline_sgProjectId", "Project Id")
+        self.sgProjectId.setFlag(nuke.INVISIBLE)
         self.addKnob( self.sgProjectId )
         self.sgProjectId.setEnabled( False )
 
@@ -126,10 +130,12 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         self.sgEntityName.setEnabled( False )
 
         self.sgEntityType = nuke.String_Knob("Deadline_sgEntityType", "Entity Type")
+        self.sgEntityType.setFlag(nuke.INVISIBLE)
         self.addKnob( self.sgEntityType )
         self.sgEntityType.setEnabled( False )
 
         self.sgEntityId = nuke.String_Knob("Deadline_sgEntityId", "Entity Id")
+        self.sgEntityId.setFlag(nuke.INVISIBLE)
         self.addKnob( self.sgEntityId )
         self.sgEntityId.setEnabled( False )
 
@@ -138,6 +144,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
 
         # SG New Description
         self.sgDescription = nuke.String_Knob( "Deadline_sgDescription", "Description" )
+        self.sgDescription.setFlag(nuke.STARTLINE)
         self.addKnob( self.sgDescription )
         self.sgDescription.setTooltip( "The description of the new Version that will be created." )
         self.sgDescription.setValue( "" )
@@ -146,10 +153,31 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         ## Draft Options
         ##########################################################################################
 
-        # WE SHOULD CHANGE THIS TO DRAFT QUALITY
-#        self.draftTemplateCombo = nuke.Enumeration_Knob( "Deadline_draftTemplate", "Draft Quality", ["Apple ProRes", "DNXHD", "H.264"] )
-#        self.addKnob( self.draftTemplateCombo )
-#        self.draftTemplateCombo.setTooltip( "Select the draft quality" )
+        self.draftCodecCombo = nuke.Enumeration_Knob( "Deadline_draftCodec", "Draft Codec", ["DNXHD", "H264"] )
+        self.addKnob( self.draftCodecCombo )
+        self.draftCodecCombo.setTooltip( "Select the Draft Codec" )
+
+        self.draftSizeCombo = nuke.Enumeration_Knob( "Deadline_draftSize", "Draft Size", ["1280x720", "1920x1080"] )
+        self.draftSizeCombo.clearFlag(nuke.STARTLINE)
+        self.addKnob( self.draftSizeCombo )
+        self.draftSizeCombo.setTooltip( "Select the Draft Size" )
+
+        self.draftAppendSlate = nuke.Boolean_Knob( "Deadline_AppendSlate", "Append Slate" )
+        self.draftAppendSlate.setFlag(nuke.STARTLINE)
+        self.addKnob( self.draftAppendSlate )
+        self.draftAppendSlate.setTooltip( "If enabled, Draft will append a slate" )
+        self.draftAppendSlate.setValue( True )
+
+        self.draftBurnInInfo = nuke.Boolean_Knob( "Deadline_BurnInInfo", "Burn-In Info" )
+        self.addKnob( self.draftBurnInInfo )
+        self.draftBurnInInfo.setTooltip( "If enabled, Draft will burn-in the info." )
+        self.draftBurnInInfo.setValue( True )
+
+        self.draftBurnInMask = nuke.Boolean_Knob( "Deadline_BurnInMask", "Burn-In Mask" )
+        self.addKnob( self.draftBurnInMask )
+        self.draftBurnInMask.setTooltip( "If enabled, Draft will burn-in the Mask." )
+        self.draftBurnInMask.setValue( True )
+
 
     def ShowDialog( self ):
         return nukescripts.PythonPanel.showModalDialog( self )
@@ -191,7 +219,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
                 self.sg.connect(self.sgUserName.value())
                 self.sgTasks = self.sg.getTasks()
 
-                tasksContent = []
+                tasksContent = ["Select Task"]
                 for task in self.sgTasks:
                     tasksContent.append(task['content'])
 
@@ -234,7 +262,6 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
                             self.sgVersionName.setValue( "%s_v%i" % (newVersionName, newVersionNumber) )
                         except:
                             self.sgVersionName.setValue('')
-
 
 # 
 def SubmitToDeadline( ):
@@ -296,17 +323,6 @@ def SubmitToDeadline( ):
 
     # Spawn extra info
     extraInfo = [ "" ] * 10
-#    extraInfo[ 0 ] = DeadlineGlobals.initExtraInfo0
-#    extraInfo[ 1 ] = DeadlineGlobals.initExtraInfo1
-#    extraInfo[ 2 ] = DeadlineGlobals.initExtraInfo2
-#    extraInfo[ 3 ] = DeadlineGlobals.initExtraInfo3
-#    extraInfo[ 4 ] = DeadlineGlobals.initExtraInfo4
-#    extraInfo[ 5 ] = DeadlineGlobals.initExtraInfo5
-#    extraInfo[ 6 ] = DeadlineGlobals.initExtraInfo6
-#    extraInfo[ 7 ] = DeadlineGlobals.initExtraInfo7
-#    extraInfo[ 8 ] = DeadlineGlobals.initExtraInfo8
-#    extraInfo[ 9 ] = DeadlineGlobals.initExtraInfo9
-
  
     # Check for potential issues and warn user about any that are found.
     warningMessages = ""
@@ -570,8 +586,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=EntityId=%s\n"      % (extraKVPIndex, dialog.sgEntityId.value() ) ) )
     extraKVPIndex += 1
 
-
-    # Instead of using the quickdraft use the template, so we can burn in the info
+    # Instead of using the quickdraft use the template, so we can burn-in the info
     draftTemplateAbsolutePath = os.path.join(os.path.dirname(__file__), 'draft/draftTemplate.py')
 
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftTemplate=%s\n" % (extraKVPIndex, draftTemplateAbsolutePath ) ) )
@@ -582,14 +597,23 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     extraKVPIndex += 1
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftVersion=%s\n" % (extraKVPIndex, dialog.sgVersionName.value() ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameWidth=%d\n" % (extraKVPIndex, 1280 ) ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameWidth=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[0]) ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameHeight=%d\n" % (extraKVPIndex, 720 ) ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameHeight=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[1]) ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftRatio=%s\n" % (extraKVPIndex, "2.35" ) ) )
+
+    DraftExtraArgs = (''' projectRatio="%s"  ''' % ("2.35") ) # should be in the project conf ini
+    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ("24") ) # should be in the project conf ini
+    DraftExtraArgs += (''' projectCodec="%s"  ''' % (dialog.draftCodecCombo.value().replace(" ", "%20")) )
+    DraftExtraArgs += (''' projectAppendSlate="%s"  ''' % (dialog.draftAppendSlate.value()) )
+    DraftExtraArgs += (''' projectBurnInInfo="%s"  ''' % (dialog.draftBurnInInfo.value()) )
+    DraftExtraArgs += (''' projectBurnInMask="%s"  ''' % (dialog.draftBurnInMask.value()) )
+    DraftExtraArgs += (''' projectName="%s"  ''' % (dialog.sgProjectName.value().replace(" ", "%20")) )
+    DraftExtraArgs += (''' projectDesc="%s"  ''' % (dialog.sgDescription.value().replace(" ", "%20")) )
+
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtraArgs=%s\n" % (extraKVPIndex, DraftExtraArgs ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtraArgs=%s\n" % (extraKVPIndex, "" ) ) )
-    extraKVPIndex += 1
+
 
     # This line renders a mov for shotgun using the Draft_CreateShotgunMovie.py from the repo
 #    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%s=Draft_CreateSGMovie=True\n" % extraKVPIndex ) )
