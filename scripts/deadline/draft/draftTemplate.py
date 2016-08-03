@@ -216,6 +216,8 @@ for frameNum in frames:
     frame = Draft.Image.ReadFromFile( inFile )
 
     # Resize the frame if bigger than the out file size
+    originalWidth = frame.width
+    originalHeight = frame.height
     if frame.width != outWidth or frame.height != outHeight:
         ratio = float(frame.width) / float(frame.height)
         outWidth = int( round( 0.5 * ratio * outHeight ) * 2 ) # round width to nearest even number
@@ -243,7 +245,7 @@ for frameNum in frames:
 
         # South West annotation
         print "Add burn ins: South West"
-        filenameAndSizeAnnotation = Draft.Image.CreateAnnotation( ("%s - %sx%s\n" % (inFile, frame.width, frame.height)), annotationInfo ) # added a \n for line break
+        filenameAndSizeAnnotation = Draft.Image.CreateAnnotation( ("%s - %sx%s\n" % (inFile, originalWidth, originalHeight)), annotationInfo ) # added a \n for line break
         frame.CompositeWithAnchor( filenameAndSizeAnnotation, Draft.Anchor.SouthWest, compOperation )
         frame.CompositeWithAnchor( descriptionAnnotation , Draft.Anchor.SouthWest, compOperation )
 
