@@ -17,10 +17,15 @@ import nukescripts
 
 import datetime
 
+
+from simpleSgApi import simpleSgApi
+
 # THE DIALOG
 class HS_DeadlineDialog( nukescripts.PythonPanel ):
     def __init__( self, maximumPriority, pools, secondaryPools, groups ):
         nukescripts.PythonPanel.__init__( self, "Submit To Deadline", "com.vfxboat.software.deadlinedialog" )
+
+        self.sg = simpleSgApi();
 
         width = 620
         height = 705
@@ -87,7 +92,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         ##########################################################################################
         ## Shotgun Options
         ##########################################################################################
-        
+
         self.draftSeparator1 = nuke.Text_Knob( "Deadline_DraftSeparator1", "" )
         self.addKnob( self.draftSeparator1 )
         
@@ -96,20 +101,16 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         self.sgUserName = nuke.String_Knob( "Deadline_sgUserName", "User" )
         self.addKnob( self.sgUserName )
         self.sgUserName.setTooltip( "Your Shotgun account name" )
-        self.sgUserName.setValue( '' )
-        
+
         self.sgConnectButton = nuke.PyScript_Knob( "Deadline_SGConnectButton", "Connect")
         self.addKnob( self.sgConnectButton )
         self.sgConnectButton.setTooltip( "Connect to the SG" )
         
         # SG Task
         # Get the jobname from the os.environ
-        sgTask = os.environ["TASK"]
         self.sgTaskCombo = nuke.Enumeration_Knob( "Deadline_sgTasks", "Tasks", [] )
-        self.sgTaskCombo.setValues(["Connect to SG"])
         self.addKnob( self.sgTaskCombo )
         self.sgTaskCombo.setTooltip( "Select your task" )
-        
 
         self.sgTaskId = nuke.String_Knob("Deadline_sgTaskId", "Task Id")
         self.sgTaskId.setFlag(nuke.INVISIBLE)
@@ -152,7 +153,20 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         ##########################################################################################
         ## Draft Options
         ##########################################################################################
-
+#
+#        self.draftSeparator1 = nuke.Text_Knob( "Deadline_DraftSeparator1", "" )
+#        self.addKnob( self.draftSeparator1 )
+#
+#        self.draftJobEnable = nuke.Boolean_Knob( "Deadline_SubmitDraft", "Submit Draft Job" )
+#        self.addKnob( self.draftJobEnable )
+#        self.draftJobEnable.setTooltip( "If enabled, a Draft Job will be submitted after the job" )
+#        self.draftJobEnable.setValue( True )
+#
+#        self.draftUploadEnable = nuke.Boolean_Knob( "Deadline_uploadDraft", "Upload Draft Job" )
+#        self.addKnob( self.draftUploadEnable )
+#        self.draftUploadEnable.setTooltip( "If enabled, the Draft Job will be uploaded to Shotgun" )
+#        self.draftUploadEnable.setValue( True )
+#
         self.draftCodecCombo = nuke.Enumeration_Knob( "Deadline_draftCodec", "Draft Codec", ["DNXHD", "H264"] )
         self.addKnob( self.draftCodecCombo )
         self.draftCodecCombo.setTooltip( "Select the Draft Codec" )
@@ -177,6 +191,49 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         self.addKnob( self.draftBurnInMask )
         self.draftBurnInMask.setTooltip( "If enabled, Draft will burn-in the Mask." )
         self.draftBurnInMask.setValue( True )
+
+        ##########################################################################################
+        ## Default Fields
+        ## Sent by HoveringSombrero
+        ##########################################################################################
+
+        DefaultRootFolder = os.environ["THEBOATFOLDER"] if os.getenv("THEBOATFOLDER") else ""
+        DefaultSgUser = os.environ["SGUSER"] if os.getenv("SGUSER") else ""
+        DefaultJob = os.environ["JOB"] if os.getenv("JOB") else ""
+        DefaultShot = os.environ["SHOT"] if os.getenv("SHOT") else ""
+        DefaultTask = os.environ["TASK"] if os.getenv("TASK") else ""
+
+        DefaultVersionName = os.path.splitext(  os.path.basename( nuke.Root().name() )  )[0]
+        DefaultVersionName = DefaultVersionName if DefaultVersionName else ""
+
+        if DefaultSgUser:
+            self.sgUserName.setValue( DefaultSgUser )
+            self.sg.connect(self.sgUserName.value())
+            self.sgTasks = self.sg.getTasks()
+
+            tasksContent = ["Select Task"]
+            for task in self.sgTasks:
+                tasksContent.append(task['content'])
+
+            self.sgTaskCombo.setValues(tasksContent)
+
+            if DefaultTask:
+                self.sgTaskCombo.setValue(DefaultTask)
+                for task in self.sgTasks:
+                    if task["content"] == DefaultTask:
+                        self.sgProjectName.setValue( task["project"]["name"] )
+                        self.sgProjectId.setValue( str( task["project"]["id"] ) )
+                        self.sgEntityName.setValue( task["entity"]["name"] )
+                        self.sgEntityId.setValue( str(task["entity"]["id"]) )
+                        self.sgEntityType.setValue( task["entity"]["type"] )
+                        self.sgTaskId.setValue( str(task["id"]) )
+        else:
+            self.sgUserName.setValue( "" )
+
+        if DefaultVersionName:
+            self.sgVersionName.setValue( DefaultVersionName )
+
+        self.sgDescription.setFlag(0) # Set focus on the description field
 
 
     def ShowDialog( self ):
@@ -211,11 +268,6 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
             if self.sgUserName.value() == '':
                 nuke.message('You should write your SG account name')
             else:
-
-                from simpleSgApi import simpleSgApi
-
-                self.sg = simpleSgApi();
-
                 self.sg.connect(self.sgUserName.value())
                 self.sgTasks = self.sg.getTasks()
 
@@ -478,7 +530,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     
     # the open method does not understand relative paths
     # so we have to join it with the path of the current script
-    jobInfoFile = (u"%s/nuke_submit_info%d.job" % (os.path.join(os.path.dirname(__file__), jobsTemp), jobCount))
+    jobInfoFile = (  u"%s/nuke_submit_info%d.job" % ( os.path.join(os.path.dirname(__file__), jobsTemp ), jobCount)  )
     fileHandle = open( jobInfoFile, "wb" )
     fileHandle.write( EncodeAsUTF16String( "Plugin=Nuke\n"                                                      ) )
     fileHandle.write( EncodeAsUTF16String( "Name=%s\n"                              % tempJobName               ) )
