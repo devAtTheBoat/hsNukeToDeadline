@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #####################
 ## the boat config ##
 ##    init.py      ##
@@ -8,28 +9,43 @@ import nuke, os, sys, re
 theBoatFolder = os.environ["THEBOATFOLDER"]
 theBoatConfigFolder = os.path.join(theBoatFolder, "_config")
 
-print(theBoatFolder)
-print(theBoatConfigFolder)
+nuke.tprint( "*------------------------" )
+nuke.tprint( "* This is the boat init.py" )
+nuke.tprint( "*", os.path.realpath(__file__) )
+nuke.tprint( "*------------------------" )
+nuke.tprint( "theBoatFolder:", theBoatFolder )
+nuke.tprint( "theBoatConfigFolder:", theBoatConfigFolder )
 
-nuke.addFormat("2048 1152 1.0 2k 1.77")
-
-nuke.tprint ("Running " + os.path.realpath(__file__))
-
+nuke.tprint ("Plugins: Fetching job directories")
 jobs = os.listdir(theBoatFolder)
+
+print ('    Adding path %s' % os.path.join(theBoatConfigFolder, "scripts"))
+nuke.pluginAddPath( os.path.join(theBoatConfigFolder, "scripts") )
 
 for job in jobs:
     jobConfig = os.path.join(theBoatFolder ,  job  , '_config')
     if os.path.exists(jobConfig):
-        print ('Adding path '+jobConfig)
+        print ('    Adding path '+jobConfig)
         nuke.pluginAddPath(jobConfig)
 
-nuke.pluginAddPath('%s/_config/scripts' % theBoatFolder)
+nuke.tprint( "Plugins: Finished adding plugins" )
+
+
+nuke.tprint( "Plugins: import pasteToSelected" )
 import pasteToSelected
 
-# ViewerProcess LUTs
-nuke.ViewerProcess.register("AlexaV3Rec709", nuke.Node, ("AlexaV3Rec709", ""))
-nuke.ViewerProcess.register("AlexaLogC", nuke.Node, ("AlexaLogC", ""))
+newFormat = "2048 1152 1.0 2k 1.77"
+nuke.tprint( "nuke addFormat %s" % newFormat )
+nuke.addFormat(newFormat)
 
+# ViewerProcess LUTs
+newLut = "AlexaV3Rec709"
+nuke.tprint( "Register new LUT %s" % newLut )
+nuke.ViewerProcess.register(newLut, nuke.Node, (newLut, ""))
+
+newLut = "AlexaLogC"
+nuke.tprint( "Register new LUT %s" % newLut )
+nuke.ViewerProcess.register(newLut, nuke.Node, (newLut, ""))
 
 # If Write dir does not exist, create it
 def createWriteDir():
@@ -44,9 +60,9 @@ def createWriteDir():
 
 # Activate the createWriteDir function
 nuke.addBeforeRender( createWriteDir )
-print ('Activated createWriteDir')
+nuke.tprint ('Activated createWriteDir')
 
-
+nuke.tprint("Loading LUMA PICTURES GIZMO LOADER")
 # LUMA PICTURES GIZMO LOADER
 
 '''
@@ -94,9 +110,9 @@ Windows:
     <DRIVE LETTER>:\Documents and Settings\<LOGIN NAME>\    (Windows XP)
     <DRIVE LETTER>:\Users\<LOGIN NAME>\                     (Windows Vista/7)
 '''
-import os
-import re
-import nuke
+#import os
+#import re
+#import nuke
 
 
 # This can be used to set the root directory for the GizmoPathManager search
@@ -104,7 +120,6 @@ import nuke
 # defined and points to an existing directory, other possible search locations
 # will be ignored, unless the `__main__` entry point code is modified below.
 CUSTOM_GIZMO_LOCATION = theBoatConfigFolder
-
 
 class GizmoPathManager(object):
     '''
