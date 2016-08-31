@@ -3,29 +3,29 @@
 ##    menu.py      ##
 #####################
 
-
 import nuke, os, sys, re
 
-nuke.tprint ("Running " +job+ " config from " + os.path.realpath(__file__))
-
+nuke.tprint( "*------------------------" )
+nuke.tprint( "* This is theboat menu.py" )
+nuke.tprint( "*", os.path.realpath(__file__) )
+nuke.tprint( "*------------------------" )
 
 job = 'jobNotSet'
 shot = 'shotNotSet'
 theBoatFolder = 'theBoatFolderNotSet'
 
-if not os.environ.get("THEBOATFOLDER")==None:
+if os.environ.get("THEBOATFOLDER"):
     theBoatFolder = os.environ.get("THEBOATFOLDER")
 
-if not os.environ.get("JOB")==None:
+if os.environ.get("JOB"):
     job = os.environ.get("JOB")
 
-if not os.environ.get("SHOT")==None:
+if os.environ.get("SHOT"):
     shot = os.environ.get("SHOT")
 
-
-shotPath = theBoatFolder+'/'+job+'/'+shot
+nuke.tprint( "theBoatFolder: {}\njob: {}\nshot: {}".format(theBoatFolder,job,shot) )
+shotPath = os.path.join(theBoatFolder, job, shot)
 nuke.addFavoriteDir(shot, shotPath)
-
 
 # THE BOAT TOOLBAR
 toolbar = nuke.toolbar("Nodes") # Access the main toolbar
@@ -41,7 +41,6 @@ if __name__ == '__main__':
     if gizManager is None:
         print 'Problem finding GizmoPathManager - check that init.py was setup correctly'
     else:
-
         gizManager.addGizmoMenuItems(rootMenu=generalNodes)
         del gizManager
 
@@ -67,30 +66,10 @@ nuke.knobDefault("EXPTool.mode", "0")
 # Format
 nuke.knobDefault("Root.format", "2k 1.77")
 
-# Deadline
-# Instead of using the Deadline Submit Script
-# Use the one in /scripts/deadline
+# Hovering Sombrero Nuke to Deadline
 nuke.pluginAddPath('scripts/deadline')
-import hsNukeToDeadline
-theboatNodes.addCommand("hsNukeToDeadline...", hsNukeToDeadline.SubmitToDeadline, icon= theBoatConfigFolder+'/icons/deadlineIcon.png')
+import hsNukeToDeadline as _hsNukeToDeadline
+theboatNodes.addCommand("hsNukeToDeadline...", _hsNukeToDeadline.SubmitToDeadline, icon= theBoatConfigFolder+'/icons/deadlineIcon.png')
 
-
-#    import DeadlineNukeClient
-#    menubar = nuke.menu("Nuke")
-#    tbmenu = menubar.addMenu("&Thinkbox")
-#    tbmenu.addCommand("Submit Nuke To Deadline", DeadlineNukeClient.main, "")
-#    try:
-#        if nuke.env[ 'studio' ]:
-#            import DeadlineNukeFrameServerClient
-#            tbmenu.addCommand("Reserve Frame Server Slaves", DeadlineNukeFrameServerClient.main, "")
-#    except:
-#        pass
-#    try:
-#        import DeadlineNukeVrayStandaloneClient
-#        tbmenu.addCommand("Submit VRay Standalone to Deadline", DeadlineNukeVrayStandaloneClient.main, "")
-#    except:
-#        pass
-
-
-nuke.tprint ("Finished running " +job+ " config from " + os.path.realpath(__file__))
-
+#nuke.tprint ("Finished running "+job+" config from " + os.path.realpath(__file__)) #for job _config
+nuke.tprint ("Finished running general config from " + os.path.realpath(__file__))

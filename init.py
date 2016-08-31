@@ -10,7 +10,7 @@ theBoatFolder = os.environ["THEBOATFOLDER"]
 theBoatConfigFolder = os.path.join(theBoatFolder, "_config")
 
 nuke.tprint( "*------------------------" )
-nuke.tprint( "* This is the boat init.py" )
+nuke.tprint( "* This is theboat init.py" )
 nuke.tprint( "*", os.path.realpath(__file__) )
 nuke.tprint( "*------------------------" )
 nuke.tprint( "theBoatFolder:", theBoatFolder )
