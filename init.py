@@ -6,12 +6,10 @@
 import nuke, os, sys, re
 
 theBoatFolder = os.environ["THEBOATFOLDER"]
-theBoatConfigFolder = theBoatFolder+"/_config"
-
+theBoatConfigFolder = os.path.join(theBoatFolder, "_config")
 
 print(theBoatFolder)
 print(theBoatConfigFolder)
-
 
 nuke.addFormat("2048 1152 1.0 2k 1.77")
 
@@ -20,7 +18,7 @@ nuke.tprint ("Running " + os.path.realpath(__file__))
 jobs = os.listdir(theBoatFolder)
 
 for job in jobs:
-    jobConfig = theBoatFolder + '/' + job + '/_config/'
+    jobConfig = os.path.join(theBoatFolder ,  job  , '_config')
     if os.path.exists(jobConfig):
         print ('Adding path '+jobConfig)
         nuke.pluginAddPath(jobConfig)
