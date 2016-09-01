@@ -3,34 +3,27 @@
 ##    init.py      ##
 #####################
 import os
-
-#job = 'gilda'
-#
-#nuke.tprint ("Running " +job+ " config from " + os.path.realpath(__file__))
-#
-#theBoatFolder = globals().get('theBoatFolder')
-#jobFolder = theBoatFolder +'/'+ job
-#
-#
-#nuke.pluginAddPath(jobFolder+'/_config/gizmos')
-#nuke.pluginAddPath(jobFolder+'/_config/scripts')
-#
-#nuke.tprint ("Finished running " +job+ " config from " + os.path.realpath(__file__))
+nuke.tprint( "*------------------------------")
+nuke.tprint( "* This is the dev config init.py")
+nuke.tprint ("* Running from " + os.path.realpath(__file__))
+nuke.tprint( "*------------------------------")
 
 try:
-    rootfolder = os.environ.get("theBoatFolder")
+    # prints all the environment
+#    print "\n".join([ "{}: {}".format(key, value) for key, value in os.environ.iteritems() ])
+
+    theBoatFolder = os.environ.get("THEBOATFOLDER")
     job = os.environ.get("JOB")
+    jobFolder = os.path.join(theBoatFolder, job)
 
-    jobFolder = os.path.join(rootfolder, job)
+    nuke.tprint ("Adding {} config scripts".format(job))
 
-    nuke.tprint ("Running " +job+ " config from " + os.path.realpath(__file__))
+    jobConfigScripts = os.path.join( jobFolder , '_config' , 'scripts' )
 
-    nuke.pluginAddPath(jobFolder+'/_config/scripts')
+    nuke.pluginAddPath( jobConfigScripts )
 
-    nuke.tprint ("Finished running " +job+ " config from " + os.path.realpath(__file__))
 except NameError as e:
     print "Error:", e
 except:
-#    nuke.tprint( "Error in dev init.py\n" + sys.exc_info()[0] )
     print "Error:", sys.exc_info()[0]
     pass
