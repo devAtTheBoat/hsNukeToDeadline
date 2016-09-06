@@ -193,18 +193,50 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         self.draftBurnInMask.setValue( True )
 
         ##########################################################################################
+        ## Hovering Sombrero Environment
+        ## Sent by HoveringSombrero
+        ##########################################################################################
+
+        self.projectSettingsTab = nuke.Tab_Knob( "Deadline_ProjectSettingsTab", "Project Settings" )
+        self.addKnob( self.projectSettingsTab )
+
+        self.projectSettings = {}
+
+        # displaying all the project settings environment vars
+        for key, value in os.environ.iteritems():
+            if key.find(os.environ.get("JOB")) > -1:
+
+                # removing the job name and the underscore
+                realKeyName = key.replace( os.environ.get("JOB")+"_", "" )
+
+                if key.find("Path") > -1:
+                    value = replacePlaceholdersInPaths(value)
+
+                newKnob = nuke.String_Knob("hoveringSombrero_"+realKeyName, realKeyName)
+                self.addKnob( newKnob )
+                newKnob.setValue( value )
+                newKnob.setEnabled( False )
+
+
+                self.projectSettings[realKeyName] = value
+
+
+        ##########################################################################################
         ## Default Fields
         ## Sent by HoveringSombrero
         ##########################################################################################
 
-        DefaultRootFolder = os.environ["THEBOATFOLDER"] if os.getenv("THEBOATFOLDER") else ""
-        DefaultSgUser = os.environ["SGUSER"] if os.getenv("SGUSER") else ""
-        DefaultJob = os.environ["JOB"] if os.getenv("JOB") else ""
-        DefaultShot = os.environ["SHOT"] if os.getenv("SHOT") else ""
-        DefaultTask = os.environ["TASK"] if os.getenv("TASK") else ""
+        DefaultRootFolder = os.getenv("THEBOATFOLDER") if os.getenv("THEBOATFOLDER") else ""
+        DefaultSgUser = os.getenv("SGUSER") if os.getenv("SGUSER") else ""
+        DefaultJob = os.getenv("JOB") if os.getenv("JOB") else ""
+        DefaultShot = os.getenv("SHOT") if os.getenv("SHOT") else ""
+        DefaultTask = os.getenv("TASK") if os.getenv("TASK") else ""
 
         DefaultVersionName = os.path.splitext(  os.path.basename( nuke.Root().name() )  )[0]
         DefaultVersionName = DefaultVersionName if DefaultVersionName else ""
+
+        DefaultDailiesRes = self.projectSettings.get("dailiesResolution")
+        DefaultDailiesCodec = self.projectSettings.get("dailiesCodec")
 
         if DefaultSgUser:
             self.sgUserName.setValue( DefaultSgUser )
@@ -235,6 +267,13 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
 
         self.sgDescription.setFlag(0) # Set focus on the description field
 
+        if DefaultDailiesRes:
+            self.draftSizeCombo.setValue( DefaultDailiesRes )
+
+        if DefaultDailiesCodec:
+            if DefaultDailiesCodec.find("Avid") > -1:
+                DefaultDailiesCodec = DefaultDailiesCodec.replace("Avid", "").upper()
+            self.draftCodecCombo.setValue( DefaultDailiesCodec )
 
     def ShowDialog( self ):
         return nukescripts.PythonPanel.showModalDialog( self )
@@ -428,6 +467,7 @@ def SubmitToDeadline( ):
         if not answer:
             return
 
+    print "This is DEV baby"
     print "Creating submission dialog..."
 
     # Create the dialog
@@ -522,6 +562,9 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
 
     print "Preparing job #%d for submission.." % jobCount
 
+    # Getting all of the project settings environment variables
+
+
     # Create a task in Nuke's progress  bar dialog
     #progressTask = nuke.ProgressTask("Submitting %s to Deadline" % tempJobName)
     progressTask = nuke.ProgressTask("Job Submission")
@@ -612,10 +655,28 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "ExtraInfo4=%s\n" % dialog.sgDescription.value() ) )
     fileHandle.write( EncodeAsUTF16String( "ExtraInfo5=%s\n" % dialog.sgUserName.value() ) )
 
+    # ENV KEYS
+    EnvKeyValueIndex = 0
+    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "THEBOATFOLDER",os.environ.get("THEBOATFOLDER")) ) )
+    EnvKeyValueIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "SHOT",os.environ.get("SHOT")) ) )
+    EnvKeyValueIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "NUKE_PATH",os.environ.get("NUKE_PATH")) ) )
+    EnvKeyValueIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "JOB",os.environ.get("JOB")) ) )
+    EnvKeyValueIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "TASK",os.environ.get("TASK")) ) )
+    EnvKeyValueIndex += 1
+
+    # GET THE JOB SPECIFIC ENVIRONMENT VARS (FROM HS)
+    for key, value in os.environ.iteritems():
+        if key.find(os.environ["JOB"]) > -1:
+            fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, key,value) ) )
+            EnvKeyValueIndex += 1
+
 
     # Draft Stuff
     extraKVPIndex = 0
-
 
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=UserName=%s\n"      % (extraKVPIndex, dialog.sgUserName.value() ) ) )
     extraKVPIndex += 1
@@ -654,14 +715,15 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameHeight=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[1]) ) ) )
     extraKVPIndex += 1
 
-    DraftExtraArgs = (''' projectRatio="%s"  ''' % ("2.35") ) # should be in the project conf ini
-    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ("24") ) # should be in the project conf ini
+    DraftExtraArgs = (''' projectRatio="%s"  ''' % ( dialog.projectSettings.get("projectionAspectRatio") ) ) # should be in the project conf ini
+    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ( dialog.projectSettings.get("fps") ) ) # should be in the project conf ini
     DraftExtraArgs += (''' projectCodec="%s"  ''' % (dialog.draftCodecCombo.value().replace(" ", "%20")) )
     DraftExtraArgs += (''' projectAppendSlate="%s"  ''' % (dialog.draftAppendSlate.value()) )
     DraftExtraArgs += (''' projectBurnInInfo="%s"  ''' % (dialog.draftBurnInInfo.value()) )
     DraftExtraArgs += (''' projectBurnInMask="%s"  ''' % (dialog.draftBurnInMask.value()) )
     DraftExtraArgs += (''' projectName="%s"  ''' % (dialog.sgProjectName.value().replace(" ", "%20")) )
     DraftExtraArgs += (''' projectDesc="%s"  ''' % (dialog.sgDescription.value().replace(" ", "%20")) )
+    DraftExtraArgs += (''' projectLut="%s"  ''' % ( replacePlaceholdersInPaths(dialog.projectSettings.get("defaultLutPath")) ) )
 
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtraArgs=%s\n" % (extraKVPIndex, DraftExtraArgs ) ) )
     extraKVPIndex += 1
@@ -681,15 +743,6 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
 
 
     fileHandle.write( EncodeAsUTF16String( "BatchName=%s\n" % dialog.jobName.value() ) )
-
-
-    # ENV KEYS
-    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (0, "THEBOATFOLDER",os.environ["THEBOATFOLDER"]) ) )
-    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (1, "SHOT",os.environ["SHOT"]) ) )
-    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (2, "NUKE_PATH",os.environ["NUKE_PATH"]) ) )
-    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (3, "JOB",os.environ["JOB"]) ) )
-    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (4, "TASK",os.environ["TASK"]) ) )
-
     fileHandle.close()
 
     # Update task progress
@@ -723,7 +776,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
         writeNodesStr = writeNodesStr.strip( "," )
         fileHandle.write( EncodeAsUTF16String( "WriteNode=%s\n" % writeNodesStr ) )
 
-    fileHandle.write( EncodeAsUTF16String( "NukeX=%s\n"     % False                ) )
+    fileHandle.write( EncodeAsUTF16String( "NukeX=%s\n"     % True                ) )
     fileHandle.write( EncodeAsUTF16String( "UseGpu=%s\n"    % False                ) )
 
     fileHandle.write( EncodeAsUTF16String( "RenderMode=%s\n"                % "Use Scene Settings" ) )
@@ -915,3 +968,45 @@ def CallDeadlineCommand( arguments, hideWindow=True ):
 
 #    print "FINISHING CallDeadlineCommand " + str ( datetime.datetime.now().time() )
     return output
+
+def replacePlaceholdersInPaths(path):
+
+    # EXAMPLE
+    # <THEBOATFOLDER>/<PROJECT>/<PUBLISHNAME>/<STEP>/<PUBLISHNAME>_v<VERSIONNUMBER>/<PUBLISHNAME>_v<VERSIONNUMBER>.<PADDING>.<EXT>
+
+    newPath = []
+
+    for index, directory in enumerate(splitall(path)):
+        replacedDirectory = directory.replace( "<THEBOATFOLDER>", os.environ.get("THEBOATFOLDER") )
+        replacedDirectory = replacedDirectory.replace( "<PROJECT>", os.environ.get("JOB") )
+
+        # Missing step data
+        # replacedDirectory = replacedDirectory.replace( "<STEP>" , step )
+
+        # Missing publishName data
+        # replacedDirectory = replacedDirectory.replace( "<PUBLISHNAME>" , publishName )
+
+        versionNumber = nukescripts.version.version_get(nuke.root().name(), "v")[1]
+        replacedDirectory = replacedDirectory.replace( "<VERSIONNUMBER>", versionNumber)
+
+        replacedDirectory = replacedDirectory.replace( "<PADDING>", os.environ.get( os.environ.get("JOB") + "_defaultPadding" ) )
+        replacedDirectory = replacedDirectory.replace( "<EXT>", os.environ.get( os.environ.get("JOB") + "_deliveryFileFormat" ) )
+
+        newPath.insert(index, replacedDirectory )
+
+    return os.path.join(*newPath)
+
+def splitall(path):
+    allparts = []
+    while 1:
+        parts = os.path.split(path)
+        if parts[0] == path:  # sentinel for absolute paths
+            allparts.insert(0, parts[0])
+            break
+        elif parts[1] == path: # sentinel for relative paths
+            allparts.insert(0, parts[1])
+            break
+        else:
+            path = parts[0]
+            allparts.insert(0, parts[1])
+    return allparts
