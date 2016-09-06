@@ -28,6 +28,11 @@ from DraftParamParser import ReplaceFilenameHashesWithNumber # For reading frame
 # 'taskEndFrame=1005'
 #]
 
+print "-----------------------"
+print "*VFXBOAT "
+print "*DAILIES DRAFT TEMPLATE "
+print "-----------------------"
+
 expectedTypes = {
     "frameList" : '<string>',
     "inFile"    : '<string>',
@@ -45,17 +50,49 @@ expectedTypes = {
     "projectAppendSlate"    : '<string>',
     "projectBurnInInfo"     : '<string>',
     "projectBurnInMask"     : '<string>',
+    "projectLut"     : '<string>',
+    "projectFramerate" : "<float>"
 }
 params = DraftParamParser.ParseCommandLine( expectedTypes, sys.argv )
-frames = DraftParamParser.FrameRangeToFrames( params['frameList'] )
+frames = DraftParamParser.FrameRangeToFrames( params.get('frameList') )
 
-inputPath = params['inFile']
-outWidth = int(params['width'])
-outHeight = int(params['height'])
+inputPath = params.get('inFile')
+outWidth = int(params.get('width'))
+outHeight = int(params.get('height'))
 
 # Encode the slate frames at the start of the video
-toCodec = params['projectCodec']
-framerate = params["projectFramerate"]
+toCodec = params.get('projectCodec')
+framerate = float(params.get("projectFramerate"))
+
+# Load the LUT
+# Supported LUTS by OCIO
+#Ext                   Details	Notes
+#3dl                   Autodesk Apps: Lustre, Flame, etc. Supports shaper LUT + 3D	Read + Write Support.
+#ccc                   ASC CDL ColorCorrectionCollection	Full read support.
+#cc 	               ASC CDL ColorCorrection	Full read support.
+#csp                   Cinespace (Rising Sun Research) LUT. Spline-based shaper LUT, with either 1D or 3D LUT.	Read + Write Support. Shaper is resampled into simple 1D LUT with 2^16 samples.
+#cub                   Truelight format. Shaper Lut + 3D	Full read support.
+#cube                  Iridas format. Either 1D or 3D Lut.	Full read support
+#hdl                   Houdini. 1D Lut, 3D lut, 1D shaper Lut	Only ‘C’ type is supported. Need to add R G B A RGB RGBA ALL. No support for Sampling tag. Header fields must be in strict order.
+#look                  IRIDAS .look	Read baked 3D LUT embedded in file. No mask support.
+#mga/m3d               Pandora 3D lut	Full read support.
+#spi1d                 1D format. Imageworks native 1D lut format. HDR friendly, supports arbitrary input and output domains	Full read support.
+#spi3d                 3D format. Imageworks native 3D lut format.	Full read support.
+#spimtx                3x3 matrix + color offset. Imageworks native color matrix format	Full read support.
+#vf 	               Inventor 3d lut.	Read support for 3d lut data and global_transform element
+lut = None
+if params.get("projectLut") is not None:
+    ocioConfigPath = os.path.abspath( os.path.join(  params.get("projectLut") , "../../config.ocio") ) #ex: /theboat/test/_config/config.ocio
+    #ocioConfigPath = "/theboat/_repo/draft/ocio-configs/nuke-default/config.ocio"
+
+    lutPath = os.path.split( params.get("projectLut") )[1]
+    #lutPath = "alexalogc.spi1d"
+
+    print "Using OCIO config from {}".format(ocioConfigPath)
+    Draft.LUT.SetOCIOConfig( ocioConfigPath )
+
+    print "Using LUT {}".format( lutPath )
+    lut = Draft.LUT.CreateOCIOProcessorFromFile( lutPath )
 
 #
 # Initialize the video encoder.
@@ -78,7 +115,7 @@ if (imageInfo.timecode):
         firstTimecodeFrames = firstTimecode[3]
 
         if ( firstTimecodeFrames == "00" ):
-            firstTimecodeFrames = str( int(framerate) - 1 )
+            firstTimecodeFrames = str( framerate - 1 )
 
             if ( firstTimecodeSeconds == "00" ):
                 firstTimecodeSeconds = "59"
@@ -89,13 +126,13 @@ if (imageInfo.timecode):
                     if ( firstTimecodeHour == "00" ):
                         firstTimecodeHour = "23"
                     else:
-                        firstTimecodeHour = str(int(firstTimecodeHour) - 1).zfill(2)
+                        firstTimecodeHour = str(float(firstTimecodeHour) - 1).zfill(2)
                 else:
-                    firstTimecodeMinutes = str(int(firstTimecodeMinutes) - 1).zfill(2)
+                    firstTimecodeMinutes = str(float(firstTimecodeMinutes) - 1).zfill(2)
             else:
-                firstTimecodeSeconds = str(int(firstTimecodeSeconds) - 1).zfill(2)
+                firstTimecodeSeconds = str(float(firstTimecodeSeconds) - 1).zfill(2)
         else:
-            firstTimecodeFrames = str(int(firstTimecodeFrames) - 1).zfill(2)
+            firstTimecodeFrames = str(float(firstTimecodeFrames) - 1).zfill(2)
 
         slateTimecode = "%s:%s:%s:%s" % (firstTimecodeHour,firstTimecodeMinutes,firstTimecodeSeconds,firstTimecodeFrames)
 
@@ -254,6 +291,10 @@ for frameNum in frames:
         frameNumAnnotation = Draft.Image.CreateAnnotation( ("%s\n" % (frameNum) ), annotationInfo ) # added a \n for line break
         frame.CompositeWithAnchor( frameNumAnnotation  , Draft.Anchor.SouthEast, compOperation )
         frame.CompositeWithAnchor( artistAnnotation  , Draft.Anchor.SouthEast, compOperation )
+
+    # Apply the LUT
+    if lut is not None:
+        lut.Apply(frame)
 
     encoder.EncodeNextFrame( frame )
 
