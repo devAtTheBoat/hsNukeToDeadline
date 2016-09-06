@@ -1,6 +1,6 @@
 #
 #
-# HOVERIN SOMBRERO 
+# HOVERIN SOMBRERO
 # NUKE TO DEADLINE SUBMITTER
 #
 # We are going to use a custom submitter because the deadline one it's too big and dificult to mantain
@@ -9,7 +9,7 @@
 import os
 import subprocess
 import threading
-import locale 
+import locale
 import re
 
 import nuke
@@ -29,16 +29,16 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
 
         width = 620
         height = 705
-        
-        self.setMinimumSize( width, height ) 
+
+        self.setMinimumSize( width, height )
 
         self.jobTab = nuke.Tab_Knob( "Deadline_JobOptionsTab", "Job Options" )
         self.addKnob( self.jobTab )
-        
+
         ##########################################################################################
         ## Job Description
         ##########################################################################################
-        
+
         # Job Name
         # Get the jobname from the filename
         job = os.path.basename( nuke.Root().name() )
@@ -46,56 +46,56 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         self.addKnob( self.jobName )
         self.jobName.setTooltip( "The name of your job. This is optional, and if left blank, it will default to 'Untitled'." )
         self.jobName.setValue( job )
-        
+
         ##########################################################################################
         ## Job Scheduling
         ##########################################################################################
-        
+
         # Pool
         self.pool = nuke.Enumeration_Knob( "Deadline_Pool", "Pool", pools )
         self.addKnob( self.pool )
         self.pool.setTooltip( "The pool that your job will be submitted to." )
         self.pool.setValue( "none" )
-        
+
         ##########################################################################################
         ## Nuke Options
         ##########################################################################################
-        
+
         self.draftSeparator1 = nuke.Text_Knob( "Deadline_DraftSeparator1", "" )
         self.addKnob( self.draftSeparator1 )
-        
+
         # Frame List
         self.frameListMode = nuke.Enumeration_Knob( "Deadline_FrameListMode", "Frame List", ("Global", "Input", "Custom") )
         self.addKnob( self.frameListMode )
         self.frameListMode.setTooltip( "Select the Global, Input, or Custom frame list mode." )
         self.frameListMode.setValue( "Global" )
-        
+
         self.frameList = nuke.String_Knob( "Deadline_FrameList", "" )
         self.frameList.clearFlag(nuke.STARTLINE)
         self.addKnob( self.frameList )
         self.frameList.setTooltip( "If Custom frame list mode is selected, this is the list of frames to render." )
         self.frameList.setValue( ("%s-%s" % (nuke.Root().firstFrame() , nuke.Root().lastFrame() ) ) )
-        
+
         # Chunk Size
         self.chunkSize = nuke.Int_Knob( "Deadline_ChunkSize", "Frames Per Task" )
         self.addKnob( self.chunkSize )
         self.chunkSize.setTooltip( "This is the number of frames that will be rendered at a time for each job task." )
         self.chunkSize.setValue( 10 )
-        
+
         # Only Submit Selected Nodes
         self.selectedOnly = nuke.Boolean_Knob( "Deadline_SelectedOnly", "Selected Nodes Only" )
         self.selectedOnly.setFlag(nuke.STARTLINE)
         self.addKnob( self.selectedOnly )
         self.selectedOnly.setTooltip( "If enabled, only the selected Write nodes will be rendered." )
         self.selectedOnly.setValue( True )
-        
+
         ##########################################################################################
         ## Shotgun Options
         ##########################################################################################
 
         self.draftSeparator1 = nuke.Text_Knob( "Deadline_DraftSeparator1", "" )
         self.addKnob( self.draftSeparator1 )
-        
+
         # SG User Name
         # Get the jobname from the filename
         self.sgUserName = nuke.String_Knob( "Deadline_sgUserName", "User" )
@@ -105,7 +105,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         self.sgConnectButton = nuke.PyScript_Knob( "Deadline_SGConnectButton", "Connect")
         self.addKnob( self.sgConnectButton )
         self.sgConnectButton.setTooltip( "Connect to the SG" )
-        
+
         # SG Task
         # Get the jobname from the os.environ
         self.sgTaskCombo = nuke.Enumeration_Knob( "Deadline_sgTasks", "Tasks", [] )
@@ -149,7 +149,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         self.addKnob( self.sgDescription )
         self.sgDescription.setTooltip( "The description of the new Version that will be created." )
         self.sgDescription.setValue( "" )
-        
+
         ##########################################################################################
         ## Draft Options
         ##########################################################################################
@@ -193,18 +193,50 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         self.draftBurnInMask.setValue( True )
 
         ##########################################################################################
+        ## Hovering Sombrero Environment
+        ## Sent by HoveringSombrero
+        ##########################################################################################
+
+        self.projectSettingsTab = nuke.Tab_Knob( "Deadline_ProjectSettingsTab", "Project Settings" )
+        self.addKnob( self.projectSettingsTab )
+
+        self.projectSettings = {}
+
+        # displaying all the project settings environment vars
+        for key, value in os.environ.iteritems():
+            if key.find(os.environ.get("JOB")) > -1:
+
+                # removing the job name and the underscore
+                realKeyName = key.replace( os.environ.get("JOB")+"_", "" )
+
+                if key.find("Path") > -1:
+                    value = replacePlaceholdersInPaths(value)
+
+                newKnob = nuke.String_Knob("hoveringSombrero_"+realKeyName, realKeyName)
+                self.addKnob( newKnob )
+                newKnob.setValue( value )
+                newKnob.setEnabled( False )
+
+
+                self.projectSettings[realKeyName] = value
+
+
+        ##########################################################################################
         ## Default Fields
         ## Sent by HoveringSombrero
         ##########################################################################################
 
-        DefaultRootFolder = os.environ["THEBOATFOLDER"] if os.getenv("THEBOATFOLDER") else ""
-        DefaultSgUser = os.environ["SGUSER"] if os.getenv("SGUSER") else ""
-        DefaultJob = os.environ["JOB"] if os.getenv("JOB") else ""
-        DefaultShot = os.environ["SHOT"] if os.getenv("SHOT") else ""
-        DefaultTask = os.environ["TASK"] if os.getenv("TASK") else ""
+        DefaultRootFolder = os.getenv("THEBOATFOLDER") if os.getenv("THEBOATFOLDER") else ""
+        DefaultSgUser = os.getenv("SGUSER") if os.getenv("SGUSER") else ""
+        DefaultJob = os.getenv("JOB") if os.getenv("JOB") else ""
+        DefaultShot = os.getenv("SHOT") if os.getenv("SHOT") else ""
+        DefaultTask = os.getenv("TASK") if os.getenv("TASK") else ""
 
         DefaultVersionName = os.path.splitext(  os.path.basename( nuke.Root().name() )  )[0]
         DefaultVersionName = DefaultVersionName if DefaultVersionName else ""
+
+        DefaultDailiesRes = self.projectSettings.get("dailiesResolution")
+        DefaultDailiesCodec = self.projectSettings.get("dailiesCodec")
 
         if DefaultSgUser:
             self.sgUserName.setValue( DefaultSgUser )
@@ -235,15 +267,22 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
 
         self.sgDescription.setFlag(0) # Set focus on the description field
 
+        if DefaultDailiesRes:
+            self.draftSizeCombo.setValue( DefaultDailiesRes )
+
+        if DefaultDailiesCodec:
+            if DefaultDailiesCodec.find("Avid") > -1:
+                DefaultDailiesCodec = DefaultDailiesCodec.replace("Avid", "").upper()
+            self.draftCodecCombo.setValue( DefaultDailiesCodec )
 
     def ShowDialog( self ):
         return nukescripts.PythonPanel.showModalDialog( self )
-    
+
     # listen to knobs changing
-    def knobChanged( self, knob ): 
+    def knobChanged( self, knob ):
         if knob == self.frameList:
             self.frameListMode.setValue( "Custom" )
-        
+
         if knob == self.frameListMode:
             # In Custom mode, don't change anything
             if self.frameListMode.value() != "Custom":
@@ -256,7 +295,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
                         endFrame = nuke.activeViewer().node().input(activeInput).frameRange().last()
                     except:
                         pass
-                
+
                 if startFrame == endFrame:
                     self.frameList.setValue( str(startFrame) )
                 else:
@@ -315,48 +354,48 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
                         except:
                             self.sgVersionName.setValue('')
 
-# 
+#
 def SubmitToDeadline( ):
     global dialog
-    global deadlineHome    
-    
+    global deadlineHome
+
     root = nuke.Root()
 
     # Check if the nk was saved
     if root.name() == "Root":
         nuke.message( "The Nuke script must be saved before it can be submitted to Deadline." )
         return
-    
+
     nuke_projects = []
     valid_projects = []
-    
+
     # location of the jobs files
     # we are running the script in scripts/deadline
     jobsTemp = '../../jobs'
-    
+
     # Get the maximum priority.
     try:
         output = CallDeadlineCommand( ["-getmaximumpriority",] )
         maximumPriority = int(output)
     except:
         maximumPriority = 100
-    
+
     # Get the pools.
     output = CallDeadlineCommand( ["-pools",] )
     pools = output.splitlines()
-    
+
     secondaryPools = []
     secondaryPools.append(" ")
     for currPool in pools:
         secondaryPools.append(currPool)
-    
+
     # Get the groups.
     output = CallDeadlineCommand( ["-groups",] )
     groups = output.splitlines()
-    
+
     initFrameListMode = "Global"
     initCustomFrameList = ("%s-%s" % (root.knob( "first_frame" ).value() , root.knob( "last_frame" ).value() ) )
-    
+
     # Get the Frame List from nuke
     if initFrameListMode != "Custom":
         startFrame = nuke.Root().firstFrame()
@@ -375,19 +414,19 @@ def SubmitToDeadline( ):
 
     # Spawn extra info
     extraInfo = [ "" ] * 10
- 
+
     # Check for potential issues and warn user about any that are found.
     warningMessages = ""
     nodeClasses = [ "Write", "DeepWrite", "WriteGeo" ]
     writeNodes = RecursiveFindNodes( nodeClasses, nuke.Root() )
     precompWriteNodes = RecursiveFindNodesInPrecomp( nodeClasses, nuke.Root() )
-    
+
     print "Found a total of %d write nodes" % len( writeNodes )
     print "Found a total of %d write nodes within precomp nodes" % len( precompWriteNodes )
-    
+
     # Check all the output filenames if they are local or not padded (non-movie files only).
     outputCount = 0
-    
+
     # Check for errors and mistakes
     for node in writeNodes:
         reading = False
@@ -427,9 +466,9 @@ def SubmitToDeadline( ):
         answer = nuke.ask( warningMessages )
         if not answer:
             return
-    
+
     print "Creating submission dialog..."
-    
+
     # Create the dialog
     dialog = HS_DeadlineDialog( maximumPriority, pools, secondaryPools, groups )
 
@@ -440,14 +479,14 @@ def SubmitToDeadline( ):
         if not success:
 #            WriteStickySettings( dialog, configFile )
             return
-        
+
         errorMessages = ""
         warningMessages = ""
-        
+
         # Check that frame range is valid.
         if dialog.frameList.value().strip() == "":
             errorMessages = errorMessages + "No frame list has been specified.\n\n"
-        
+
         if dialog.sgUserName.value() == "" or dialog.sgTaskId.value() == "" or dialog.sgVersionName.value() == "" :
             errorMessages = errorMessages + "There are no Shotgun Information available. Please complete the missing information."
 
@@ -468,20 +507,20 @@ def SubmitToDeadline( ):
                         validNodeFound = True
                         if dialog.selectedOnly.value() and not IsNodeOrParentNodeSelected(node):
                             validNodeFound = False
-                        
+
                         if validNodeFound:
                             break
 
             if not validNodeFound:
                 if dialog.selectedOnly.value():
                     errorMessages = errorMessages + "There are no selected write nodes, so there are no jobs to submit.\n\n"
-                    
+
         # Alert the user of any errors.
         if errorMessages != "":
             errorMessages = errorMessages + "Please fix these issues and submit again."
             nuke.message( errorMessages )
             success = False
-        
+
         # Alert the user of any warnings.
         if success and warningMessages != "":
             warningMessages = warningMessages + "Do you still wish to submit this job to Deadline?"
@@ -489,14 +528,14 @@ def SubmitToDeadline( ):
             if not answer:
 #                WriteStickySettings( dialog, configFile )
                 return
-            
+
     tempJobName = dialog.jobName.value()
     tempDependencies = ""
     tempFrameList = dialog.frameList.value().strip()
     tempChunkSize = dialog.chunkSize.value()
     tempIsMovie = False
     semaphore = threading.Semaphore()
-    
+
     for tempNode in writeNodes:
         if not tempNode.knob( 'disable' ).value():
             enterLoop = True
@@ -512,22 +551,25 @@ def SubmitToDeadline( ):
     #Create a new thread to do the submission
     print "Spawning submission thread..."
     submitThread = threading.Thread( None, SubmitJob, None, ( dialog, root, None, writeNodes, jobsTemp, tempJobName, tempFrameList, tempDependencies, tempChunkSize, tempIsMovie, 1, None, extraInfo ) )
-    submitThread.start()  
-    
+    submitThread.start()
+
 
 def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameList, tempDependencies, tempChunkSize, tempIsMovie, jobCount, semaphore,  extraInfo ):
 #    global ResolutionsDict
 #    global FormatsDict
     viewsToRender = nuke.views()
-        
+
     print "Preparing job #%d for submission.." % jobCount
-    
+
+    # Getting all of the project settings environment variables
+
+
     # Create a task in Nuke's progress  bar dialog
     #progressTask = nuke.ProgressTask("Submitting %s to Deadline" % tempJobName)
     progressTask = nuke.ProgressTask("Job Submission")
     progressTask.setMessage("Creating Job Info File")
     progressTask.setProgress(0)
-    
+
     # the open method does not understand relative paths
     # so we have to join it with the path of the current script
     jobInfoFile = (  u"%s/nuke_submit_info%d.job" % ( os.path.join(os.path.dirname(__file__), jobsTemp ), jobCount)  )
@@ -553,10 +595,10 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "ChunkSize=%s\n"                         % tempChunkSize             ) )
     fileHandle.write( EncodeAsUTF16String( "Whitelist=%s\n"                         % ""                        ) )
 #    fileHandle.write( EncodeAsUTF16String( "InitialStatus=%s\n"                     % "Active"                  ) )
-    
+
     extraKVPIndex = 0
     index = 0
-#    
+#
     for v in viewsToRender:
         for tempNode in writeNodes:
             if not tempNode.knob( 'disable' ).value():
@@ -612,10 +654,28 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "ExtraInfo4=%s\n" % dialog.sgDescription.value() ) )
     fileHandle.write( EncodeAsUTF16String( "ExtraInfo5=%s\n" % dialog.sgUserName.value() ) )
 
+    # ENV KEYS
+    EnvKeyValueIndex = 0
+    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "THEBOATFOLDER",os.environ.get("THEBOATFOLDER")) ) )
+    EnvKeyValueIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "SHOT",os.environ.get("SHOT")) ) )
+    EnvKeyValueIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "NUKE_PATH",os.environ.get("NUKE_PATH")) ) )
+    EnvKeyValueIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "JOB",os.environ.get("JOB")) ) )
+    EnvKeyValueIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "TASK",os.environ.get("TASK")) ) )
+    EnvKeyValueIndex += 1
+
+    # GET THE JOB SPECIFIC ENVIRONMENT VARS (FROM HS)
+    for key, value in os.environ.iteritems():
+        if key.find(os.environ["JOB"]) > -1:
+            fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, key,value) ) )
+            EnvKeyValueIndex += 1
+
 
     # Draft Stuff
     extraKVPIndex = 0
-
 
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=UserName=%s\n"      % (extraKVPIndex, dialog.sgUserName.value() ) ) )
     extraKVPIndex += 1
@@ -654,14 +714,15 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameHeight=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[1]) ) ) )
     extraKVPIndex += 1
 
-    DraftExtraArgs = (''' projectRatio="%s"  ''' % ("2.35") ) # should be in the project conf ini
-    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ("24") ) # should be in the project conf ini
+    DraftExtraArgs = (''' projectRatio="%s"  ''' % ( dialog.projectSettings.get("projectionAspectRatio") ) ) # should be in the project conf ini
+    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ( dialog.projectSettings.get("fps") ) ) # should be in the project conf ini
     DraftExtraArgs += (''' projectCodec="%s"  ''' % (dialog.draftCodecCombo.value().replace(" ", "%20")) )
     DraftExtraArgs += (''' projectAppendSlate="%s"  ''' % (dialog.draftAppendSlate.value()) )
     DraftExtraArgs += (''' projectBurnInInfo="%s"  ''' % (dialog.draftBurnInInfo.value()) )
     DraftExtraArgs += (''' projectBurnInMask="%s"  ''' % (dialog.draftBurnInMask.value()) )
     DraftExtraArgs += (''' projectName="%s"  ''' % (dialog.sgProjectName.value().replace(" ", "%20")) )
     DraftExtraArgs += (''' projectDesc="%s"  ''' % (dialog.sgDescription.value().replace(" ", "%20")) )
+    DraftExtraArgs += (''' projectLut="%s"  ''' % ( replacePlaceholdersInPaths(dialog.projectSettings.get("defaultLutPath")) ) )
 
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtraArgs=%s\n" % (extraKVPIndex, DraftExtraArgs ) ) )
     extraKVPIndex += 1
@@ -681,33 +742,24 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
 
 
     fileHandle.write( EncodeAsUTF16String( "BatchName=%s\n" % dialog.jobName.value() ) )
-
-
-    # ENV KEYS
-    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (0, "THEBOATFOLDER",os.environ["THEBOATFOLDER"]) ) ) 
-    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (1, "SHOT",os.environ["SHOT"]) ) ) 
-    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (2, "NUKE_PATH",os.environ["NUKE_PATH"]) ) ) 
-    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (3, "JOB",os.environ["JOB"]) ) ) 
-    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (4, "TASK",os.environ["TASK"]) ) ) 
-    
     fileHandle.close()
-    
+
     # Update task progress
     progressTask.setMessage("Creating Plugin Info File")
     progressTask.setProgress(10)
-    
+
     # Create the plugin info file
     # the open method does not understand relative paths
     # so we have to join it with the path of the current script
     pluginInfoFile = (u"%s/nuke_plugin_info%d.job" % (os.path.join(os.path.dirname(__file__), jobsTemp), jobCount))
     fileHandle = open( pluginInfoFile, "w" )
-    
+
     fileHandle.write( EncodeAsUTF16String( "Version=%s.%s\n"            % (nuke.env[ 'NukeVersionMajor' ], nuke.env['NukeVersionMinor']) ) )
     fileHandle.write( EncodeAsUTF16String( "Threads=%s\n"               % 0                             ) )
     fileHandle.write( EncodeAsUTF16String( "RamUse=%s\n"                % 0                             ) )
     fileHandle.write( EncodeAsUTF16String( "BatchMode=%s\n"             % True                          ) )
     fileHandle.write( EncodeAsUTF16String( "BatchModeIsMovie=%s\n"      % tempIsMovie ) )
-    
+
     if dialog.selectedOnly.value():
         writeNodesStr = ""
 
@@ -723,7 +775,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
         writeNodesStr = writeNodesStr.strip( "," )
         fileHandle.write( EncodeAsUTF16String( "WriteNode=%s\n" % writeNodesStr ) )
 
-    fileHandle.write( EncodeAsUTF16String( "NukeX=%s\n"     % False                ) )
+    fileHandle.write( EncodeAsUTF16String( "NukeX=%s\n"     % True                ) )
     fileHandle.write( EncodeAsUTF16String( "UseGpu=%s\n"    % False                ) )
 
     fileHandle.write( EncodeAsUTF16String( "RenderMode=%s\n"                % "Use Scene Settings" ) )
@@ -735,46 +787,46 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "StackSize=%s\n"                 % 0  ) )
 
     fileHandle.close()
-    
+
     # Update task progress
     progressTask.setMessage("Submitting Job %d to Deadline" % jobCount)
     progressTask.setProgress(30)
-    
+
     # Submit the job to Deadline
     args = []
     args.append( jobInfoFile.encode(locale.getpreferredencoding() ) )
     args.append( pluginInfoFile.encode(locale.getpreferredencoding() ) )
     args.append( root.name() ) # SUBMIT NK
     args.append( (os.path.join(os.path.dirname(__file__), "draft/slateBackground.dpx") ) )  # SUBMIT SLATE FRAME
-        
+
     tempResults = ""
-    
+
     # Submit Job
     progressTask.setProgress(50)
-    
+
     # If submitting multiple jobs, acquire the semaphore so that only one job is submitted at a time.
     if semaphore:
         semaphore.acquire()
-        
+
     try:
         tempResults = CallDeadlineCommand( args )
     finally:
         # Release the semaphore if necessary.
         if semaphore:
             semaphore.release()
-    
+
     # Update task progress
     progressTask.setMessage("Complete!")
     progressTask.setProgress(100)
-    
+
     print "Job submission #%d complete" % jobCount
-    
+
     # If submitting multiple jobs, just print the results to the console, otherwise show them to the user.
     if semaphore:
         print tempResults
     else:
         nuke.executeInMainThread( nuke.message, tempResults )
-    
+
     return tempResults
 
 
@@ -783,29 +835,29 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
 def IsNodeOrParentNodeSelected( node ):
     if node.isSelected():
         return True
-    
+
     parentNode = nuke.toNode( '.'.join( node.fullName().split('.')[:-1] ) )
     if parentNode:
         return IsNodeOrParentNodeSelected( parentNode )
-    
+
     return False
 
-#This will recursively find nodes of the given class (used to find write nodes, even if they're embedded in groups).  
+#This will recursively find nodes of the given class (used to find write nodes, even if they're embedded in groups).
 def RecursiveFindNodes(nodeClasses, startNode):
     nodeList = []
-    
+
     if startNode != None:
         if startNode.Class() in nodeClasses:
             nodeList = [startNode]
         elif isinstance(startNode, nuke.Group):
             for child in startNode.nodes():
                 nodeList.extend( RecursiveFindNodes(nodeClasses, child) )
-        
+
     return nodeList
 
 def RecursiveFindNodesInPrecomp(nodeClasses, startNode):
     nodeList = []
-    
+
     if startNode != None:
         if startNode.Class() == "Precomp":
             for child in startNode.nodes():
@@ -813,13 +865,13 @@ def RecursiveFindNodesInPrecomp(nodeClasses, startNode):
         elif isinstance(startNode, nuke.Group):
             for child in startNode.nodes():
                 nodeList.extend( RecursiveFindNodesInPrecomp(nodeClasses, child) )
-    
+
     return nodeList
-    
+
 # Checks a path to make sure it has an extension
 def HasExtension( path ):
     filename = os.path.basename( path )
-    
+
     return filename.rfind( "." ) > -1
 
 # Checks if path is local (c, d, or e drive).
@@ -850,20 +902,20 @@ def IsPadded( path ):
 # it with the correct number of #'s, and returns the new padded filename.
 def GetPaddedPath( path ):
     paddingRe = re.compile( "([0-9]+)", re.IGNORECASE )
-    
+
     paddingMatches = paddingRe.findall( path )
     if paddingMatches != None and len( paddingMatches ) > 0:
         paddingString = paddingMatches[ len( paddingMatches ) - 1 ]
         paddingSize = len(paddingString)
-        
+
         padding = ""
         while len(padding) < paddingSize:
             padding = padding + "#"
-        
+
         path = RightReplace( path, paddingString, padding, 1 )
-    
+
     return path
-    
+
 def RightReplace(s, old, new, occurrence):
     li = s.rsplit(old, occurrence)
     return new.join(li)
@@ -885,7 +937,7 @@ def CallDeadlineCommand( arguments, hideWindow=True ):
             deadlineCommand = deadlineBin + "\\deadlinecommand.exe"
         else:
             deadlineCommand = deadlineBin + "/deadlinecommand"
-    
+
     startupinfo = None
     if hideWindow and os.name == 'nt':
         # Python 2.6 has subprocess.STARTF_USESHOWWINDOW, and Python 2.7 has subprocess._subprocess.STARTF_USESHOWWINDOW, so check for both.
@@ -895,23 +947,65 @@ def CallDeadlineCommand( arguments, hideWindow=True ):
         elif hasattr( subprocess, 'STARTF_USESHOWWINDOW' ):
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    
+
     environment = {}
     for key in os.environ.keys():
         environment[key] = str(os.environ[key])
-        
+
     # Need to set the PATH, cuz windows seems to load DLLs from the PATH earlier that cwd....
     if os.name == 'nt':
         environment['PATH'] = str(deadlineBin + os.pathsep + os.environ['PATH'])
-    
+
     arguments.insert( 0, deadlineCommand)
-    
+
     # Specifying PIPE for all handles to workaround a Python bug on Windows. The unused handles are then closed immediatley afterwards.
     proc = subprocess.Popen(arguments, cwd=deadlineBin, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, startupinfo=startupinfo, env=environment)
     proc.stdin.close()
     proc.stderr.close()
-    
+
     output = proc.stdout.read()
-    
+
 #    print "FINISHING CallDeadlineCommand " + str ( datetime.datetime.now().time() )
     return output
+
+def replacePlaceholdersInPaths(path):
+
+    # EXAMPLE
+    # <THEBOATFOLDER>/<PROJECT>/<PUBLISHNAME>/<STEP>/<PUBLISHNAME>_v<VERSIONNUMBER>/<PUBLISHNAME>_v<VERSIONNUMBER>.<PADDING>.<EXT>
+
+    newPath = []
+
+    for index, directory in enumerate(splitall(path)):
+        replacedDirectory = directory.replace( "<THEBOATFOLDER>", os.environ.get("THEBOATFOLDER") )
+        replacedDirectory = replacedDirectory.replace( "<PROJECT>", os.environ.get("JOB") )
+
+        # Missing step data
+        # replacedDirectory = replacedDirectory.replace( "<STEP>" , step )
+
+        # Missing publishName data
+        # replacedDirectory = replacedDirectory.replace( "<PUBLISHNAME>" , publishName )
+
+        versionNumber = nukescripts.version.version_get(nuke.root().name(), "v")[1]
+        replacedDirectory = replacedDirectory.replace( "<VERSIONNUMBER>", versionNumber)
+
+        replacedDirectory = replacedDirectory.replace( "<PADDING>", os.environ.get( os.environ.get("JOB") + "_defaultPadding" ) )
+        replacedDirectory = replacedDirectory.replace( "<EXT>", os.environ.get( os.environ.get("JOB") + "_deliveryFileFormat" ) )
+
+        newPath.insert(index, replacedDirectory )
+
+    return os.path.join(*newPath)
+
+def splitall(path):
+    allparts = []
+    while 1:
+        parts = os.path.split(path)
+        if parts[0] == path:  # sentinel for absolute paths
+            allparts.insert(0, parts[0])
+            break
+        elif parts[1] == path: # sentinel for relative paths
+            allparts.insert(0, parts[1])
+            break
+        else:
+            path = parts[0]
+            allparts.insert(0, parts[1])
+    return allparts
