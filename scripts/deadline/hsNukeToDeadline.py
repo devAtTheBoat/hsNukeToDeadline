@@ -723,7 +723,8 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     DraftExtraArgs += (''' projectBurnInMask="%s"  ''' % (dialog.draftBurnInMask.value()) )
     DraftExtraArgs += (''' projectName="%s"  ''' % (dialog.sgProjectName.value().replace(" ", "%20")) )
     DraftExtraArgs += (''' projectDesc="%s"  ''' % (dialog.sgDescription.value().replace(" ", "%20")) )
-    DraftExtraArgs += (''' projectLut="%s"  ''' % ( replacePlaceholdersInPaths(dialog.projectSettings.get("defaultLutPath")) ) )
+    DraftExtraArgs += (''' defaultLut="%s"  ''' % ( dialog.projectSettings.get("defaultLut") ) )
+    DraftExtraArgs += (''' defaultOCIOPath="%s"  ''' % ( replacePlaceholdersInPaths(dialog.projectSettings.get("defaultOCIOPath")) ) )
 
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtraArgs=%s\n" % (extraKVPIndex, DraftExtraArgs ) ) )
     extraKVPIndex += 1
