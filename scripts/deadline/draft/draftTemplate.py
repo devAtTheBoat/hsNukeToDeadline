@@ -265,6 +265,14 @@ for frameNum in frames:
     # Resize the frame if bigger than the out file size
     originalWidth = frame.width
     originalHeight = frame.height
+
+    # Apply the LUT
+    if lut is not None:
+        print "Applying Lut"
+        lut.Apply(frame)
+    else:
+        print "No Lut to apply"
+
     if frame.width != outWidth or frame.height != outHeight:
         print "WARNING: Resizing image from {0}x{1} to {2}x{3}".format( frame.width, frame.height, outWidth, outHeight )
         frame.Resize( outWidth, outHeight )
@@ -295,13 +303,6 @@ for frameNum in frames:
         frameNumAnnotation = Draft.Image.CreateAnnotation( ("%s\n" % (frameNum) ), annotationInfo ) # added a \n for line break
         frame.CompositeWithAnchor( frameNumAnnotation  , Draft.Anchor.SouthEast, compOperation )
         frame.CompositeWithAnchor( artistAnnotation  , Draft.Anchor.SouthEast, compOperation )
-
-    # Apply the LUT
-    if lut is not None:
-        print "Applying Lut"
-        lut.Apply(frame)
-    else:
-        print "No Lut to apply"
 
     encoder.EncodeNextFrame( frame )
 
