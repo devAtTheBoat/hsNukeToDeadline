@@ -30,7 +30,7 @@ from DraftParamParser import ReplaceFilenameHashesWithNumber # For reading frame
 print "-----------------------"
 print "*VFXBOAT "
 print "*DAILIES DRAFT TEMPLATE "
-print "*v1.1 "
+print "*v1.1.1 "
 print "-----------------------"
 
 expectedTypes = {
@@ -139,16 +139,21 @@ if (imageInfo.timecode):
         else:
             firstTimecodeFrames = str(int(firstTimecodeFrames) - 1).zfill(2)
 
-        slateTimecode = "%s:%s:%s:%s" % (firstTimecodeHour,firstTimecodeMinutes,firstTimecodeSeconds,firstTimecodeFrames)
+        print "This shouldn't make any errors"
+        slateTimecode = "%s:%s:%s:%s" % (   str( int(firstTimecodeHour) ).zfill(2),
+                                            str( int(firstTimecodeMinutes) ).zfill(2),
+                                            str( int(firstTimecodeSeconds) ).zfill(2),
+                                            str( int(firstTimecodeFrames) ).zfill(2)  )
 
-        print "The slate timecode starts at: %s" % slateTimecode
+        try:
+            print "The slate timecode starts at: %s" % slateTimecode
+            slateTimecode = Draft.Timecode( slateTimecode )
 
-        slateTimecode = Draft.Timecode( slateTimecode )
-
-        # Embed the encoder with the new timecode
-        encoder = Draft.VideoEncoder( params['outFile'], fps=framerate, width=outWidth, height=outHeight, quality=100, codec=toCodec , timecode=slateTimecode)
+            # Embed the encoder with the new timecode
+            encoder = Draft.VideoEncoder( params['outFile'], fps=framerate, width=outWidth, height=outHeight, quality=100, codec=toCodec , timecode=slateTimecode)
+        except:
+            print "Error adding timecode ", sys.argv[0]
     else:
-
         # Embed the encoder with the actual timecode
         encoder = Draft.VideoEncoder( params['outFile'], fps=framerate, width=outWidth, height=outHeight, quality=100, codec=toCodec , timecode=imageInfo.timecode)
 else:
