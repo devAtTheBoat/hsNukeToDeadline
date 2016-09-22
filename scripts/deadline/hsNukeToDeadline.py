@@ -204,7 +204,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
 
         # displaying all the project settings environment vars
         for key, value in os.environ.iteritems():
-            if key.find(os.environ.get("JOB")) > -1:
+            if key.upper().find(os.environ.get("JOB").upper()) > -1:
 
                 # removing the job name and the underscore
                 realKeyName = key.replace( os.environ.get("JOB")+"_", "" )
@@ -669,8 +669,10 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     EnvKeyValueIndex += 1
 
     # GET THE JOB SPECIFIC ENVIRONMENT VARS (FROM HS)
+	# we make everything uppercase because in windows
+	# the environments keys are ALWAYS in uppercase
     for key, value in os.environ.iteritems():
-        if key.find(os.environ["JOB"]) > -1:
+        if key.upper().find(os.environ["JOB"].upper()) > -1:
             fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, key,value) ) )
             EnvKeyValueIndex += 1
 
