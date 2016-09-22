@@ -988,9 +988,13 @@ def replacePlaceholdersInPaths(path):
 
         # Missing publishName data
         # replacedDirectory = replacedDirectory.replace( "<PUBLISHNAME>" , publishName )
-
-        versionNumber = nukescripts.version.version_get(nuke.root().name(), "v")[1]
-        replacedDirectory = replacedDirectory.replace( "<VERSIONNUMBER>", versionNumber)
+		try:
+        	versionNumber = nukescripts.version.version_get(nuke.root().name(), "v")[1]
+        except ValueError as e:
+			versionNumber = ""
+			print e
+			pass
+		replacedDirectory = replacedDirectory.replace( "<VERSIONNUMBER>", versionNumber)
 
         replacedDirectory = replacedDirectory.replace( "<PADDING>", os.environ.get( os.environ.get("JOB") + "_defaultPadding" ) )
         replacedDirectory = replacedDirectory.replace( "<EXT>", os.environ.get( os.environ.get("JOB") + "_deliveryFileFormat" ) )
