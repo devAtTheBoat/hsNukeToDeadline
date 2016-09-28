@@ -17,6 +17,7 @@ import nukescripts
 
 import datetime
 
+import platform
 
 from simpleSgApi import simpleSgApi
 
@@ -24,6 +25,8 @@ from simpleSgApi import simpleSgApi
 class HS_DeadlineDialog( nukescripts.PythonPanel ):
     def __init__( self, maximumPriority, pools, secondaryPools, groups ):
         nukescripts.PythonPanel.__init__( self, "Submit To Deadline", "com.vfxboat.software.deadlinedialog" )
+
+        print "hsNukeToDeadline v1.1.3"
 
         self.sg = simpleSgApi();
 
@@ -206,7 +209,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         for key, value in os.environ.iteritems():
             if key.upper().find(os.environ.get("JOB").upper()) > -1:
 
-                # removing the job name and the underscore
+            # removing the job name and the underscore
                 realKeyName = key.replace( os.environ.get("JOB")+"_", "" )
 
                 if key.find("Path") > -1:
@@ -599,50 +602,67 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
 
     extraKVPIndex = 0
     index = 0
-#
     for v in viewsToRender:
-        for tempNode in writeNodes:
-            if not tempNode.knob( 'disable' ).value():
-                enterLoop = True
+
+		print "writeNodes : {}".format(writeNodes)
+
+		for tempNode in writeNodes:
+
+			if not tempNode.knob( 'disable' ).value():
+				enterLoop = True
+
+				print "IsNodeOrParentNodeSelected(tempNode):{}".format( IsNodeOrParentNodeSelected(tempNode) )
+
                 if dialog.selectedOnly.value():
                     enterLoop = enterLoop and IsNodeOrParentNodeSelected(tempNode)
 
                 if enterLoop:
                     #gets the filename/proxy filename and evaluates TCL + vars, but *doesn't* swap frame padding
-                    fileValue = nuke.filename( tempNode )
+					fileValue = nuke.filename( tempNode )
 
-                    if ( root.proxy() and tempNode.knob( 'proxy' ).value() != "" ):
-                        evaluatedValue = tempNode.knob( 'proxy' ).evaluate(view=v)
-                    else:
-                        evaluatedValue = tempNode.knob( 'file' ).evaluate(view=v)
+					print "->enterLoop: fileValue:{}".format(fileValue)
 
-                    if fileValue != None and fileValue != "" and evaluatedValue != None and evaluatedValue != "":
-                        tempPath, tempFilename = os.path.split( evaluatedValue )
+					if ( root.proxy() and tempNode.knob( 'proxy' ).value() != "" ):
+						evaluatedValue = tempNode.knob( 'proxy' ).evaluate(view=v)
+					else:
+						evaluatedValue = tempNode.knob( 'file' ).evaluate(view=v)
 
-                        if IsPadded( os.path.basename( fileValue ) ):
-                            tempFilename = GetPaddedPath( tempFilename )
+					print "->enterLoop: evaluatedValue: {}".format(evaluatedValue)
 
-                        paddedPath = os.path.join( tempPath, tempFilename )
+					if fileValue != None and fileValue != "" and evaluatedValue != None and evaluatedValue != "":
+						print "->fileValue is valid and evaluatedValue is valid"
+						tempPath, tempFilename = os.path.split( evaluatedValue )
 
-                        #Handle escape character cases
-                        paddedPath = paddedPath.replace( "\\", "/" )
+						fileHandle.write( EncodeAsUTF16String( "OutputDirectory%s=%s\n" % ( index, tempPath ) ) )
+						if IsPadded( os.path.basename( fileValue ) ):
+							tempFilename = GetPaddedPath( tempFilename )
 
-                        fileHandle.write( EncodeAsUTF16String( "OutputFilename%s=%s\n" % (index, paddedPath ) ) )
+						paddedPath = os.path.join( tempPath, tempFilename )
+						#Handle escape character cases
+						paddedPath = paddedPath.replace( "\\", "/" )
 
-                        #Check if the Write Node will be modifying the output's Frame numbers
-                        if tempNode.knob( 'frame_mode' ):
-                            if ( tempNode.knob( 'frame_mode' ).value() == "offset" ):
-                                fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=OutputFrameOffset%s=%s\n" % ( extraKVPIndex, index, str( int( tempNode.knob( 'frame' ).value() ) ) ) ) )
-                                extraKVPIndex += 1
-                            elif ( tempNode.knob( 'frame_mode' ).value() == "start at" or tempNode.knob( 'frame_mode' ).value() == "start_at"):
-                                franges = nuke.FrameRanges( tempFrameList )
-                                fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=OutputFrameOffset%s=%s\n" % ( extraKVPIndex, index, str( int( tempNode.knob( 'frame' ).value() ) - franges.minFrame() ) ) ) )
-                                extraKVPIndex += 1
-                            else:
-                                #TODO: Handle 'expression'? Would be much harder
-                                pass
+						fileHandle.write( EncodeAsUTF16String( "OutputFilename%s=%s\n" % (index, paddedPath ) ) )
 
-                        index = index + 1
+						print "->enterLoop paddedPath:{}".format(paddedPath)
+
+						print "->enterLoop: check for frame mode offset"
+						#Check if the Write Node will be modifying the output's Frame numbers
+						if tempNode.knob( 'frame_mode' ):
+							if ( tempNode.knob( 'frame_mode' ).value() == "offset" ):
+								fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=OutputFrameOffset%s=%s\n" % ( extraKVPIndex, index, str( int( tempNode.knob( 'frame' ).value() ) ) ) ) )
+								print "->enterLoop: frame_mode: {}".format(str( int( tempNode.knob( 'frame' ).value() ) ))
+								extraKVPIndex += 1
+							elif ( tempNode.knob( 'frame_mode' ).value() == "start at" or tempNode.knob( 'frame_mode' ).value() == "start_at"):
+								franges = nuke.FrameRanges( tempFrameList )
+								fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=OutputFrameOffset%s=%s\n" % ( extraKVPIndex, index, str( int( tempNode.knob( 'frame' ).value() ) - franges.minFrame() ) ) ) )
+								print "->enterLoop: frame_mode: {}".format(    str( int( tempNode.knob( 'frame' ).value() ) - franges.minFrame() )    )
+								extraKVPIndex += 1
+							else:
+						#TODO: Handle 'expression'? Would be much harder
+								pass
+
+
+						index = index + 1
 
     # Write the shotgun data.
     groupBatch = True
@@ -669,8 +689,8 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     EnvKeyValueIndex += 1
 
     # GET THE JOB SPECIFIC ENVIRONMENT VARS (FROM HS)
-	# we make everything uppercase because in windows
-	# the environments keys are ALWAYS in uppercase
+        # we make everything uppercase because in windows
+        # the environments keys are ALWAYS in uppercase
     for key, value in os.environ.iteritems():
         if key.upper().find(os.environ["JOB"].upper()) > -1:
             fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, key,value) ) )
@@ -717,16 +737,16 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameHeight=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[1]) ) ) )
     extraKVPIndex += 1
 
-    DraftExtraArgs = (''' projectRatio="%s"  ''' % ( dialog.projectSettings.get("projectionAspectRatio") ) ) # should be in the project conf ini
-    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ( dialog.projectSettings.get("fps") ) ) # should be in the project conf ini
+    DraftExtraArgs = (''' projectRatio="%s"  ''' % ( dialog.projectSettings.get( uppercaseIfWindows("projectionAspectRatio") ) ) ) # should be in the project conf ini
+    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ( dialog.projectSettings.get( uppercaseIfWindows("fps") ) ) ) # should be in the project conf ini
     DraftExtraArgs += (''' projectCodec="%s"  ''' % (dialog.draftCodecCombo.value().replace(" ", "%20")) )
     DraftExtraArgs += (''' projectAppendSlate="%s"  ''' % (dialog.draftAppendSlate.value()) )
     DraftExtraArgs += (''' projectBurnInInfo="%s"  ''' % (dialog.draftBurnInInfo.value()) )
     DraftExtraArgs += (''' projectBurnInMask="%s"  ''' % (dialog.draftBurnInMask.value()) )
     DraftExtraArgs += (''' projectName="%s"  ''' % (dialog.sgProjectName.value().replace(" ", "%20")) )
     DraftExtraArgs += (''' projectDesc="%s"  ''' % (dialog.sgDescription.value().replace(" ", "%20")) )
-    DraftExtraArgs += (''' projectLut="%s"  ''' % ( dialog.projectSettings.get("defaultLut") ) )
-    DraftExtraArgs += (''' projectOCIOPath="%s"  ''' % ( replacePlaceholdersInPaths(dialog.projectSettings.get("defaultOCIOPath")) ) )
+    DraftExtraArgs += (''' projectLut="%s"  ''' % ( dialog.projectSettings.get( uppercaseIfWindows("defaultLut") ) ) )
+    DraftExtraArgs += (''' projectOCIOPath="%s"  ''' % ( replacePlaceholdersInPaths(dialog.projectSettings.get( uppercaseIfWindows("defaultOCIOPath") )) ) )
 
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtraArgs=%s\n" % (extraKVPIndex, DraftExtraArgs ) ) )
     extraKVPIndex += 1
@@ -801,7 +821,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     args.append( jobInfoFile.encode(locale.getpreferredencoding() ) )
     args.append( pluginInfoFile.encode(locale.getpreferredencoding() ) )
     args.append( root.name() ) # SUBMIT NK
-    args.append( (os.path.join(os.path.dirname(__file__), "draft/slateBackground.dpx") ) )  # SUBMIT SLATE FRAME
+#    args.append( (os.path.join(os.path.dirname(__file__), "draft/slateBackground.dpx") ) )  # SUBMIT SLATE FRAME
 
     tempResults = ""
 
@@ -825,7 +845,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
 
     print "Job submission #%d complete" % jobCount
 
-    # If submitting multiple jobs, just print the results to the console, otherwise show them to the user.
+#     If submitting multiple jobs, just print the results to the console, otherwise show them to the user.
     if semaphore:
         print tempResults
     else:
@@ -972,30 +992,39 @@ def CallDeadlineCommand( arguments, hideWindow=True ):
 #    print "FINISHING CallDeadlineCommand " + str ( datetime.datetime.now().time() )
     return output
 
+def uppercaseIfWindows(string):
+	if platform.system().find("windows") > -1:
+		return string.upper()
+	else:
+		return string
+
 def replacePlaceholdersInPaths(path):
 
-    # EXAMPLE
-    # <THEBOATFOLDER>/<PROJECT>/<PUBLISHNAME>/<STEP>/<PUBLISHNAME>_v<VERSIONNUMBER>/<PUBLISHNAME>_v<VERSIONNUMBER>.<PADDING>.<EXT>
+# EXAMPLE
+# <THEBOATFOLDER>/<PROJECT>/<PUBLISHNAME>/<STEP>/<PUBLISHNAME>_v<VERSIONNUMBER>/<PUBLISHNAME>_v<VERSIONNUMBER>.<PADDING>.<EXT>
 
     newPath = []
 
     for index, directory in enumerate(splitall(path)):
-        replacedDirectory = directory.replace( "<THEBOATFOLDER>", os.environ.get("THEBOATFOLDER") )
-        replacedDirectory = replacedDirectory.replace( "<PROJECT>", os.environ.get("JOB") )
+        replacedDirectory = directory.replace("<THEBOATFOLDER>", os.environ.get("THEBOATFOLDER"))
+        replacedDirectory = replacedDirectory.replace("<PROJECT>", os.environ.get("JOB"))
 
-        # Missing step data
-        # replacedDirectory = replacedDirectory.replace( "<STEP>" , step )
+        versionNumber = ""
+        try:
+            versionNumber = nukescripts.version.version_get(nuke.root().name(),"v")[1]
+        except ValueError as e:
+            print e
+            pass
 
-        # Missing publishName data
-        # replacedDirectory = replacedDirectory.replace( "<PUBLISHNAME>" , publishName )
+        replacedDirectory = replacedDirectory.replace("<VERSIONNUMBER>", versionNumber)
 
-        versionNumber = nukescripts.version.version_get(nuke.root().name(), "v")[1]
-        replacedDirectory = replacedDirectory.replace( "<VERSIONNUMBER>", versionNumber)
+        defaultPadding = os.environ.get("JOB") + "_defaultPadding"
+        deliveryExtension = os.environ.get("JOB") + "_deliveryFileFormat"
 
-        replacedDirectory = replacedDirectory.replace( "<PADDING>", os.environ.get( os.environ.get("JOB") + "_defaultPadding" ) )
-        replacedDirectory = replacedDirectory.replace( "<EXT>", os.environ.get( os.environ.get("JOB") + "_deliveryFileFormat" ) )
+        replacedDirectory = replacedDirectory.replace("<PADDING>", os.environ.get( uppercaseIfWindows(defaultPadding) ) )
+        replacedDirectory = replacedDirectory.replace("<EXT>", os.environ.get( uppercaseIfWindows(deliveryExtension) ) )
 
-        newPath.insert(index, replacedDirectory )
+        newPath.insert(index, replacedDirectory)
 
     return os.path.join(*newPath)
 
