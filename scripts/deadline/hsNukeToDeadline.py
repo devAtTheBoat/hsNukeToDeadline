@@ -592,6 +592,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle = open( jobInfoFile, "wb" )
     fileHandle.write( EncodeAsUTF16String( "Plugin=Nuke\n"                                                      ) )
     fileHandle.write( EncodeAsUTF16String( "Name=%s\n"                              % tempJobName               ) )
+    fileHandle.write( EncodeAsUTF16String( "UserName=%s\n"                          % dialog.sgUserName.value() ) )
     fileHandle.write( EncodeAsUTF16String( "Comment=%s\n"                           % ''                        ) )
     fileHandle.write( EncodeAsUTF16String( "Department=%s\n"                        % ''                        ) )
     fileHandle.write( EncodeAsUTF16String( "Pool=%s\n"                              % dialog.pool.value()       ) )
