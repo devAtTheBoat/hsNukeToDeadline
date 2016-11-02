@@ -26,7 +26,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
     def __init__( self, maximumPriority, pools, secondaryPools, groups ):
         nukescripts.PythonPanel.__init__( self, "Submit To Deadline", "com.vfxboat.software.deadlinedialog" )
 
-        print "hsNukeToDeadline v1.1.3"
+        print "hsNukeToDeadline v1.1.4"
 
         self.sg = simpleSgApi();
 
@@ -235,8 +235,15 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         DefaultShot = os.getenv("SHOT") if os.getenv("SHOT") else ""
         DefaultTask = os.getenv("TASK") if os.getenv("TASK") else ""
 
-        DefaultVersionName = os.path.splitext(  os.path.basename( nuke.Root().name() )  )[0]
+        try:
+            # use the name of the write node
+            DefaultVersionName = os.path.basename( nuke.selectedNode().knob('file').value() ).split(".")[0]
+        except:
+            # use the name of the nk
+            DefaultVersionName = os.path.splitext(  os.path.basename( nuke.Root().name() )  )[0]
+
         DefaultVersionName = DefaultVersionName if DefaultVersionName else ""
+
 
         DefaultDailiesRes = self.projectSettings.get("dailiesResolution")
         DefaultDailiesCodec = self.projectSettings.get("dailiesCodec")
@@ -368,6 +375,11 @@ def SubmitToDeadline( ):
     if root.name() == "Root":
         nuke.message( "The Nuke script must be saved before it can be submitted to Deadline." )
         return
+
+    # Save nuke script if modified
+    if root.modified():
+        if root.name() != "Root":
+            nuke.scriptSave( root.name() )
 
     nuke_projects = []
     valid_projects = []
@@ -649,7 +661,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
                         index = index + 1
 
     # Write the shotgun data.
-    groupBatch = True
+#    groupBatch = True
 
     # Creating a new version in SG
     fileHandle.write( EncodeAsUTF16String( "ExtraInfo0=%s\n" % dialog.sgTaskCombo.value() ) )
@@ -749,7 +761,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     extraKVPIndex += 1
 
 
-    fileHandle.write( EncodeAsUTF16String( "BatchName=%s\n" % dialog.jobName.value() ) )
+#    fileHandle.write( EncodeAsUTF16String( "BatchName=%s\n" % dialog.jobName.value() ) )
     fileHandle.close()
 
     # Update task progress
@@ -765,8 +777,8 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "Version=%s.%s\n"            % (nuke.env[ 'NukeVersionMajor' ], nuke.env['NukeVersionMinor']) ) )
     fileHandle.write( EncodeAsUTF16String( "Threads=%s\n"               % 0                             ) )
     fileHandle.write( EncodeAsUTF16String( "RamUse=%s\n"                % 0                             ) )
-    fileHandle.write( EncodeAsUTF16String( "BatchMode=%s\n"             % True                          ) )
-    fileHandle.write( EncodeAsUTF16String( "BatchModeIsMovie=%s\n"      % tempIsMovie ) )
+#    fileHandle.write( EncodeAsUTF16String( "BatchMode=%s\n"             % True                          ) )
+#    fileHandle.write( EncodeAsUTF16String( "BatchModeIsMovie=%s\n"      % tempIsMovie ) )
 
     if dialog.selectedOnly.value():
         writeNodesStr = ""
