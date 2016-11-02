@@ -10,3 +10,4 @@
 *.pyc
 /elements/*
 *.job
+/gizmos/

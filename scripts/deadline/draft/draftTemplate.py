@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import sys, os
 import Draft
 import DraftParamParser
@@ -31,6 +30,7 @@ from DraftParamParser import ReplaceFilenameHashesWithNumber # For reading frame
 print "-----------------------"
 print "*VFXBOAT "
 print "*DAILIES DRAFT TEMPLATE "
+print "*v1.1.2 "
 print "-----------------------"
 
 expectedTypes = {
@@ -50,7 +50,8 @@ expectedTypes = {
     "projectAppendSlate"    : '<string>',
     "projectBurnInInfo"     : '<string>',
     "projectBurnInMask"     : '<string>',
-    "projectLut"     : '<string>',
+    "projectLut"            : '<string>', # uncomment this to make it obligatory
+    "projectOCIOPath"       : '<string>', # uncomment this to make it obligatory
     "projectFramerate" : "<float>"
 }
 params = DraftParamParser.ParseCommandLine( expectedTypes, sys.argv )
@@ -82,17 +83,21 @@ framerate = float(params.get("projectFramerate"))
 #vf 	               Inventor 3d lut.	Read support for 3d lut data and global_transform element
 lut = None
 if params.get("projectLut") is not None:
-    ocioConfigPath = os.path.abspath( os.path.join(  params.get("projectLut") , "../../config.ocio") ) #ex: /theboat/test/_config/config.ocio
-    #ocioConfigPath = "/theboat/_repo/draft/ocio-configs/nuke-default/config.ocio"
+    ocioConfigPath = params.get("projectOCIOPath") #ex: /theboat/test/_config/config.ocio
 
-    lutPath = os.path.split( params.get("projectLut") )[1]
-    #lutPath = "alexalogc.spi1d"
+    lutName = params.get("projectLut") # Inside the "luts" directory relative to the config.ocio
 
     print "Using OCIO config from {}".format(ocioConfigPath)
-    Draft.LUT.SetOCIOConfig( ocioConfigPath )
+    try:
+        Draft.LUT.SetOCIOConfig( ocioConfigPath )
 
-    print "Using LUT {}".format( lutPath )
-    lut = Draft.LUT.CreateOCIOProcessorFromFile( lutPath )
+        print "Using LUT {}".format( lutName )
+        lut = Draft.LUT.CreateOCIOProcessorFromFile( lutName )
+    except:
+        print "Unexpected error looking for LUT", sys.exc_info()[0]
+
+        lut = None
+        pass
 
 #
 # Initialize the video encoder.
@@ -115,7 +120,7 @@ if (imageInfo.timecode):
         firstTimecodeFrames = firstTimecode[3]
 
         if ( firstTimecodeFrames == "00" ):
-            firstTimecodeFrames = str( framerate - 1 )
+            firstTimecodeFrames = str( int(float(framerate)) - 1 )
 
             if ( firstTimecodeSeconds == "00" ):
                 firstTimecodeSeconds = "59"
@@ -126,30 +131,35 @@ if (imageInfo.timecode):
                     if ( firstTimecodeHour == "00" ):
                         firstTimecodeHour = "23"
                     else:
-                        firstTimecodeHour = str(float(firstTimecodeHour) - 1).zfill(2)
+                        firstTimecodeHour = str(int(float(firstTimecodeHour)) - 1).zfill(2)
                 else:
-                    firstTimecodeMinutes = str(float(firstTimecodeMinutes) - 1).zfill(2)
+                    firstTimecodeMinutes = str(int(float(firstTimecodeMinutes)) - 1).zfill(2)
             else:
-                firstTimecodeSeconds = str(float(firstTimecodeSeconds) - 1).zfill(2)
+                firstTimecodeSeconds = str(int(float(firstTimecodeSeconds)) - 1).zfill(2)
         else:
-            firstTimecodeFrames = str(float(firstTimecodeFrames) - 1).zfill(2)
+            firstTimecodeFrames = str(int(float(firstTimecodeFrames)) - 1).zfill(2)
 
-        slateTimecode = "%s:%s:%s:%s" % (firstTimecodeHour,firstTimecodeMinutes,firstTimecodeSeconds,firstTimecodeFrames)
+        print "This shouldn't make any errors"
+        slateTimecode = "%s:%s:%s:%s" % (   str( int( float(firstTimecodeHour)) ).zfill(2)  ,
+                                            str( int( float(firstTimecodeMinutes)) ).zfill(2),
+                                            str( int( float(firstTimecodeSeconds)) ).zfill(2),
+                                            str( int( float(firstTimecodeFrames)) ).zfill(2)  )
 
-        print "The slate timecode starts at: %s" % slateTimecode
+        try:
+            print "The slate timecode starts at: %s" % slateTimecode
+            slateTimecode = Draft.Timecode( slateTimecode )
 
-        slateTimecode = Draft.Timecode( slateTimecode )
-
-        # Embed the encoder with the new timecode
-        encoder = Draft.VideoEncoder( params['outFile'], fps=framerate, width=outWidth, height=outHeight, quality=80, codec=toCodec , timecode=slateTimecode)
+            # Embed the encoder with the new timecode
+            encoder = Draft.VideoEncoder( params['outFile'], fps=framerate, width=outWidth, height=outHeight, quality=100, codec=toCodec , timecode=slateTimecode)
+        except:
+            print "Error adding timecode ", sys.argv[0]
     else:
-
         # Embed the encoder with the actual timecode
-        encoder = Draft.VideoEncoder( params['outFile'], fps=framerate, width=outWidth, height=outHeight, quality=80, codec=toCodec , timecode=imageInfo.timecode)
+        encoder = Draft.VideoEncoder( params['outFile'], fps=framerate, width=outWidth, height=outHeight, quality=100, codec=toCodec , timecode=imageInfo.timecode)
 else:
 
     # Dont embed TC
-    encoder = Draft.VideoEncoder( params['outFile'], fps=framerate, width=outWidth, height=outHeight, quality=80, codec=toCodec )
+    encoder = Draft.VideoEncoder( params['outFile'], fps=framerate, width=outWidth, height=outHeight, quality=100, codec=toCodec )
 
 #
 # Create the anotations
@@ -157,7 +167,7 @@ else:
 
 # Set text's color and point size
 annotationInfo = Draft.AnnotationInfo()
-annotationInfo.Color = Draft.ColorRGBA( 0.0, 0.1, 0.3, 1.0 )
+annotationInfo.Color = Draft.ColorRGBA( 1.0,1.0,1.0,1.0 ) # color white
 annotationInfo.PointSize = int( outHeight * 0.045 )
 
 #
@@ -169,7 +179,12 @@ compOperation = Draft.CompositeOperator.OverCompositeOp
 if params['projectAppendSlate'] == "True":
     print "Creating the burn in data"
     # Set up the text for the slate frame
-    slateText = [("JOB", params["projectName"]), ("SHOT", params["entity"]), ("VERSION", params['version']), ("FRAMES", params['frameList']), ("ARTIST", params['username']), ("DATE", datetime.datetime.now().strftime("%m/%d/%Y") )]
+    slateText = [("JOB", params["projectName"].replace("%20", " ") ),
+                 ("SHOT", params["entity"]),
+                 ("VERSION", params['version']),
+                 ("FRAMES", params['frameList']),
+                 ("ARTIST", params['username']),
+                 ("DATE", datetime.datetime.now().strftime("%m/%d/%Y") )]
 
     slateAbsolutePath = os.path.join('/theboat/_config/scripts/deadline/draft/slateBackground.dpx')
     slateFrame = Draft.Image.ReadFromFile( slateAbsolutePath )
@@ -230,7 +245,7 @@ if params['projectBurnInInfo'] == "True":
     southEast = {"x" : outWidth - annotationOffset, "y" : outHeight-annotationOffset}
 
     # North West annotation
-    projectNameAndDateAnnotation = Draft.Image.CreateAnnotation( params['projectName'] +"\n"+ datetime.datetime.now().strftime("%m/%d/%Y"), annotationInfo)
+    projectNameAndDateAnnotation = Draft.Image.CreateAnnotation( params['projectName'].replace("%20", " ") +"\n"+ datetime.datetime.now().strftime("%m/%d/%Y"), annotationInfo)
 
     # North East annotation
     studioNameAnnotation = Draft.Image.CreateAnnotation( "VFXBOAT", annotationInfo ) # we should put the logo here
@@ -255,19 +270,21 @@ for frameNum in frames:
     # Resize the frame if bigger than the out file size
     originalWidth = frame.width
     originalHeight = frame.height
+
+    # Apply the LUT
+    if lut is not None:
+        print "Applying Lut"
+        lut.Apply(frame)
+    else:
+        print "No Lut to apply"
+
     if frame.width != outWidth or frame.height != outHeight:
-        ratio = float(frame.width) / float(frame.height)
-        outWidth = int( round( 0.5 * ratio * outHeight ) * 2 ) # round width to nearest even number
         print "WARNING: Resizing image from {0}x{1} to {2}x{3}".format( frame.width, frame.height, outWidth, outHeight )
-        frame.Resize( outWidth, outHeight, 'height' )
+        frame.Resize( outWidth, outHeight )
 
     if params['projectBurnInMask'] == "True":
         # Add the semi-transparent mask
         print "Add the semi-transparent mask"
-        print "Channel names for frame:", frame.GetChannelNames()
-        print "Channel names for mask:", mask.GetChannelNames()
-
-
         frame.Composite( mask, 0, 0, compOperation )
 
     if params['projectBurnInInfo'] == "True":
@@ -291,10 +308,6 @@ for frameNum in frames:
         frameNumAnnotation = Draft.Image.CreateAnnotation( ("%s\n" % (frameNum) ), annotationInfo ) # added a \n for line break
         frame.CompositeWithAnchor( frameNumAnnotation  , Draft.Anchor.SouthEast, compOperation )
         frame.CompositeWithAnchor( artistAnnotation  , Draft.Anchor.SouthEast, compOperation )
-
-    # Apply the LUT
-    if lut is not None:
-        lut.Apply(frame)
 
     encoder.EncodeNextFrame( frame )
 

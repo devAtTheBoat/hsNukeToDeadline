@@ -16,23 +16,45 @@ nuke.tprint( "*------------------------" )
 nuke.tprint( "theBoatFolder:", theBoatFolder )
 nuke.tprint( "theBoatConfigFolder:", theBoatConfigFolder )
 
-nuke.tprint ("Plugins: Fetching job directories")
-jobs = os.listdir(theBoatFolder)
 
-print ('    Adding path %s' % os.path.join(theBoatConfigFolder, "scripts"))
-nuke.pluginAddPath( os.path.join(theBoatConfigFolder, "scripts") )
+job = 'jobNotSet'
+shot = 'shotNotSet'
+theBoatFolder = 'theBoatFolderNotSet'
 
-for job in jobs:
-    jobConfig = os.path.join(theBoatFolder ,  job  , '_config')
-    if os.path.exists(jobConfig):
-        print ('    Adding path '+jobConfig)
-        nuke.pluginAddPath(jobConfig)
+if os.environ.get("THEBOATFOLDER"):
+    theBoatFolder = os.environ.get("THEBOATFOLDER")
 
-nuke.tprint( "Plugins: Finished adding plugins" )
+if os.environ.get("JOB"):
+    job = os.environ.get("JOB")
+
+if os.environ.get("SHOT"):
+    shot = os.environ.get("SHOT")
+
+jobConfig = os.path.join(theBoatFolder ,  job  , '_config')
+if os.path.exists(jobConfig):
+    print ('    Adding path '+jobConfig)
+    nuke.pluginAddPath(jobConfig)
 
 
-nuke.tprint( "Plugins: import pasteToSelected" )
-import pasteToSelected
+    #nuke.tprint ("Plugins: Fetching job directories")
+#jobs = os.listdir(theBoatFolder)
+#
+#
+#
+#print ('    Adding path %s' % os.path.join(theBoatConfigFolder, "scripts"))
+#nuke.pluginAddPath( os.path.join(theBoatConfigFolder, "scripts") )
+#
+#for job in jobs:
+#    jobConfig = os.path.join(theBoatFolder ,  job  , '_config')
+#    if os.path.exists(jobConfig):
+#        print ('    Adding path '+jobConfig)
+#        nuke.pluginAddPath(jobConfig)
+#
+#nuke.tprint( "Plugins: Finished adding plugins" )
+
+
+#nuke.tprint( "Plugins: import pasteToSelected" )
+#import pasteToSelected
 
 newFormat = "2048 1152 1.0 2k 1.77"
 nuke.tprint( "nuke addFormat %s" % newFormat )
@@ -44,6 +66,10 @@ nuke.tprint( "Register new LUT %s" % newLut )
 nuke.ViewerProcess.register(newLut, nuke.Node, (newLut, ""))
 
 newLut = "AlexaLogC"
+nuke.tprint( "Register new LUT %s" % newLut )
+nuke.ViewerProcess.register(newLut, nuke.Node, (newLut, ""))
+
+newLut = "RLF2RG4"
 nuke.tprint( "Register new LUT %s" % newLut )
 nuke.ViewerProcess.register(newLut, nuke.Node, (newLut, ""))
 

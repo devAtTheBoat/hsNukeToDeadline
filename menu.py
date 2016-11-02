@@ -32,9 +32,6 @@ toolbar = nuke.toolbar("Nodes") # Access the main toolbar
 theboatNodes = toolbar.addMenu("theboat", icon= theBoatConfigFolder+'/icons/boatIcon.png')
 generalNodes = theboatNodes.addMenu("theboat", icon= theBoatConfigFolder+'/icons/hoveringSombreroIcon.png')
 
-# FrameHolds default to current frame
-nuke.menu('Nodes').addCommand( "Time/FrameHold", "nuke.createNode('FrameHold')['first_frame'].setValue( nuke.frame() )", icon='FrameHold.png')
-
 #LUMA'S GIZMO PATH MANAGER
 if __name__ == '__main__':
     gizManager = globals().get('gizManager', None)
@@ -66,10 +63,14 @@ nuke.knobDefault("EXPTool.mode", "0")
 # Format
 nuke.knobDefault("Root.format", "2k 1.77")
 
+# FrameHolds default to current frame
+nuke.menu('Nodes').addCommand( "Time/FrameHold", "nuke.createNode('FrameHold')['first_frame'].setValue( nuke.frame() )", icon='FrameHold.png')
+
+
 # Hovering Sombrero Nuke to Deadline
 nuke.pluginAddPath('scripts/deadline')
 import hsNukeToDeadline as _hsNukeToDeadline
-theboatNodes.addCommand("hsNukeToDeadline...", _hsNukeToDeadline.SubmitToDeadline, icon= theBoatConfigFolder+'/icons/deadlineIcon.png')
+theboatNodes.addCommand("Render on the farm...", _hsNukeToDeadline.SubmitToDeadline, icon= theBoatConfigFolder+'/icons/deadlineIcon.png')
 
 #nuke.tprint ("Finished running "+job+" config from " + os.path.realpath(__file__)) #for job _config
 nuke.tprint ("Finished running general config from " + os.path.realpath(__file__))
