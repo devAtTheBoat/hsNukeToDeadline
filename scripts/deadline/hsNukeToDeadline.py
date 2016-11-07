@@ -470,7 +470,7 @@ def SubmitToDeadline( ):
         if not answer:
             return
 
-    print "This is DEV baby"
+#    print "This is DEV baby"
     print "Creating submission dialog..."
 
     # Create the dialog
