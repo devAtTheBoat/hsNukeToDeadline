@@ -15,3 +15,4 @@
 /scripts/deadline/draft/slateBackground.png
 /scripts/__init__.py
 /scripts/deadline/__init__.py
+scripts/deadline/simpleSgApi.py
