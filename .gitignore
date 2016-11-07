@@ -11,3 +11,6 @@
 /elements/*
 *.job
 /gizmos/
+*.zip
+/jobs/nuke_plugin_info1.job
+/jobs/nuke_submit_info1.job
