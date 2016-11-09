@@ -734,35 +734,23 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameHeight=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[1]) ) ) )
     extraKVPIndex += 1
 
-    DraftExtraArgs = (''' projectRatio="%s"  ''' % ( dialog.projectSettings.get( uppercaseIfWindows("projectionAspectRatio") ) ) ) # should be in the project conf ini
-    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ( dialog.projectSettings.get( uppercaseIfWindows("fps") ) ) ) # should be in the project conf ini
+    DraftExtraArgs = (''' projectRatio="%s"  ''' % ( dialog.projectSettings.get( "PROJECTIONASPECTRATIO" ) ) ) # should be in the project conf ini
+    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ( dialog.projectSettings.get( "FPS" ) ) ) # should be in the project conf ini
     DraftExtraArgs += (''' projectCodec="%s"  ''' % (dialog.draftCodecCombo.value().replace(" ", "%20")) )
     DraftExtraArgs += (''' projectAppendSlate="%s"  ''' % (dialog.draftAppendSlate.value()) )
     DraftExtraArgs += (''' projectBurnInInfo="%s"  ''' % (dialog.draftBurnInInfo.value()) )
     DraftExtraArgs += (''' projectBurnInMask="%s"  ''' % (dialog.draftBurnInMask.value()) )
     DraftExtraArgs += (''' projectName="%s"  ''' % (dialog.sgProjectName.value().replace(" ", "%20")) )
     DraftExtraArgs += (''' projectDesc="%s"  ''' % (dialog.sgDescription.value().replace(" ", "%20")) )
-    DraftExtraArgs += (''' projectLut="%s"  ''' % ( dialog.projectSettings.get( uppercaseIfWindows("defaultLut") ) ) )
-    DraftExtraArgs += (''' projectOCIOPath="%s"  ''' % ( replacePlaceholdersInPaths(dialog.projectSettings.get( uppercaseIfWindows("defaultOCIOPath") )) ) )
+    DraftExtraArgs += (''' projectLut="%s"  ''' % ( dialog.projectSettings.get( "DEFAULTLUT" ) ) )
+    DraftExtraArgs += (''' projectOCIOPath="%s"  ''' % ( dialog.projectSettings.get( "DEFAULTOCIOPATH" ) ) )
 
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtraArgs=%s\n" % (extraKVPIndex, DraftExtraArgs ) ) )
     extraKVPIndex += 1
 
-
-    # This line renders a mov for shotgun using the Draft_CreateShotgunMovie.py from the repo
-#    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%s=Draft_CreateSGMovie=True\n" % extraKVPIndex ) )
-#    extraKVPIndex += 1
-
-#     This line renders a filmstrip for shotgun
-#    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%s=Draft_CreateSGFilmstrip=True\n" % extraKVPIndex ) )
-#    extraKVPIndex += 1
-
     # This line uploads the movie to shotgun
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftUploadToShotgun=%s\n" % (extraKVPIndex,  True ) ) )
     extraKVPIndex += 1
-
-
-#    fileHandle.write( EncodeAsUTF16String( "BatchName=%s\n" % dialog.jobName.value() ) )
     fileHandle.close()
 
     # Update task progress
@@ -778,8 +766,6 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "Version=%s.%s\n"            % (nuke.env[ 'NukeVersionMajor' ], nuke.env['NukeVersionMinor']) ) )
     fileHandle.write( EncodeAsUTF16String( "Threads=%s\n"               % 0                             ) )
     fileHandle.write( EncodeAsUTF16String( "RamUse=%s\n"                % 0                             ) )
-#    fileHandle.write( EncodeAsUTF16String( "BatchMode=%s\n"             % True                          ) )
-#    fileHandle.write( EncodeAsUTF16String( "BatchModeIsMovie=%s\n"      % tempIsMovie ) )
 
     if dialog.selectedOnly.value():
         writeNodesStr = ""
@@ -818,7 +804,6 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     args.append( jobInfoFile.encode(locale.getpreferredencoding() ) )
     args.append( pluginInfoFile.encode(locale.getpreferredencoding() ) )
     args.append( root.name() ) # SUBMIT NK
-#    args.append( (os.path.join(os.path.dirname(__file__), "draft/slateBackground.dpx") ) )  # SUBMIT SLATE FRAME
 
     tempResults = ""
 
@@ -989,43 +974,10 @@ def CallDeadlineCommand( arguments, hideWindow=True ):
 #    print "FINISHING CallDeadlineCommand " + str ( datetime.datetime.now().time() )
     return output
 
-def uppercaseIfWindows(string):
-	if platform.system().find("windows") > -1:
-		return string.upper()
-	else:
-		return string
-
-def replacePlaceholdersInPaths(path):
-
-# EXAMPLE
-# <THEBOATFOLDER>/<PROJECT>/<PUBLISHNAME>/<STEP>/<PUBLISHNAME>_v<VERSIONNUMBER>/<PUBLISHNAME>_v<VERSIONNUMBER>.<PADDING>.<EXT>
-
-    newPath = []
-
-    for index, directory in enumerate(splitall(path)):
-        replacedDirectory = directory.replace("<THEBOATFOLDER>", os.environ.get("THEBOATFOLDER"))
-        replacedDirectory = replacedDirectory.replace("<PROJECT>", os.environ.get("JOB"))
-
-        versionNumber = ""
-        try:
-            versionNumber = nukescripts.version.version_get(nuke.root().name(),"v")[1]
-        except ValueError as e:
-            print e
-            pass
-
-        replacedDirectory = replacedDirectory.replace("<VERSIONNUMBER>", versionNumber)
-
-        defaultPadding = os.environ.get("JOB") + "_defaultPadding"
-        deliveryExtension = os.environ.get("JOB") + "_deliveryFileFormat"
-
-        replacedDirectory = replacedDirectory.replace("<PADDING>", os.environ.get( uppercaseIfWindows(defaultPadding) ) )
-        replacedDirectory = replacedDirectory.replace("<EXT>", os.environ.get( uppercaseIfWindows(deliveryExtension) ) )
-
-        newPath.insert(index, replacedDirectory)
-
-    return os.path.join(*newPath)
-
 def splitall(path):
+
+    print path
+
     allparts = []
     while 1:
         parts = os.path.split(path)
