@@ -28,7 +28,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
     def __init__( self, maximumPriority, pools, secondaryPools, groups ):
         nukescripts.PythonPanel.__init__( self, "Submit To Deadline", "com.vfxboat.software.deadlinedialog" )
 
-        print "hsNukeToDeadline v1.1.4"
+        print "hsNukeToDeadline v2.0.0"
 
         self.sg = simpleSgApi();
 
@@ -207,23 +207,16 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
 
         self.projectSettings = {}
 
-        # displaying all the project settings environment vars
-        for key, value in os.environ.iteritems():
-            if key.upper().find(os.environ.get("JOB").upper()) > -1:
+        hsProjectSettings = os.environ.get("HS_PROJECT_SETTINGS_KEYS").split(":")
 
-            # removing the job name and the underscore
-                realKeyName = key.replace( os.environ.get("JOB")+"_", "" )
+        for setting in hsProjectSettings:
+            self.projectSettings[setting] = os.environ.get(setting)
 
-                if key.find("Path") > -1:
-                    value = replacePlaceholdersInPaths(value)
-
-                newKnob = nuke.String_Knob("hoveringSombrero_"+realKeyName, realKeyName)
-                self.addKnob( newKnob )
-                newKnob.setValue( value )
-                newKnob.setEnabled( False )
-
-
-                self.projectSettings[realKeyName] = value
+        for key, value in self.projectSettings.iteritems():
+            newKnob = nuke.String_Knob(key, key)
+            self.addKnob( newKnob )
+            newKnob.setValue( value )
+            newKnob.setEnabled( False )
 
 
         ##########################################################################################
@@ -690,10 +683,15 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     # GET THE JOB SPECIFIC ENVIRONMENT VARS (FROM HS)
         # we make everything uppercase because in windows
         # the environments keys are ALWAYS in uppercase
-    for key, value in os.environ.iteritems():
-        if key.upper().find(os.environ["JOB"].upper()) > -1:
-            fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, key,value) ) )
-            EnvKeyValueIndex += 1
+    hsProjectSettings = os.environ.get("HS_PROJECT_SETTINGS_KEYS").split(":")
+
+    for setting in hsProjectSettings:
+
+        key = setting
+        value = os.environ.get(key)
+
+        fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, key,value) ) )
+        EnvKeyValueIndex += 1
 
 
     # Draft Stuff
