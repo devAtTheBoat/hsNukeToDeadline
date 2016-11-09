@@ -7,12 +7,5 @@
 /jobs/
 /.git/
 *.pyc
-/init.py
-/menu.py
-/scripts/deadline/simpleSgApi.py
-/scripts/deadline/draft/slateBackground.dpx
-/scripts/deadline/draft/slateBackground.mov
-/scripts/deadline/draft/slateBackground.png
-/scripts/__init__.py
-/scripts/deadline/__init__.py
-scripts/deadline/simpleSgApi.py
+*.*
+!hsNukeToDeadline.py
