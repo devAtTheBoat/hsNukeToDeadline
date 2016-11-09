@@ -19,6 +19,8 @@ import datetime
 
 import platform
 
+
+
 from simpleSgApi import simpleSgApi
 
 # THE DIALOG
@@ -26,7 +28,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
     def __init__( self, maximumPriority, pools, secondaryPools, groups ):
         nukescripts.PythonPanel.__init__( self, "Submit To Deadline", "com.vfxboat.software.deadlinedialog" )
 
-        print "hsNukeToDeadline v1.1.3"
+        print "hsNukeToDeadline v1.1.4"
 
         self.sg = simpleSgApi();
 
@@ -235,8 +237,15 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         DefaultShot = os.getenv("SHOT") if os.getenv("SHOT") else ""
         DefaultTask = os.getenv("TASK") if os.getenv("TASK") else ""
 
-        DefaultVersionName = os.path.splitext(  os.path.basename( nuke.Root().name() )  )[0]
+        try:
+            # use the name of the write node
+            DefaultVersionName = os.path.basename( nuke.selectedNode().knob('file').value() ).split(".")[0]
+        except:
+            # use the name of the nk
+            DefaultVersionName = os.path.splitext(  os.path.basename( nuke.Root().name() )  )[0]
+
         DefaultVersionName = DefaultVersionName if DefaultVersionName else ""
+
 
         DefaultDailiesRes = self.projectSettings.get("dailiesResolution")
         DefaultDailiesCodec = self.projectSettings.get("dailiesCodec")
@@ -368,6 +377,11 @@ def SubmitToDeadline( ):
     if root.name() == "Root":
         nuke.message( "The Nuke script must be saved before it can be submitted to Deadline." )
         return
+
+    # Save nuke script if modified
+    if root.modified():
+        if root.name() != "Root":
+            nuke.scriptSave( root.name() )
 
     nuke_projects = []
     valid_projects = []
@@ -580,6 +594,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle = open( jobInfoFile, "wb" )
     fileHandle.write( EncodeAsUTF16String( "Plugin=Nuke\n"                                                      ) )
     fileHandle.write( EncodeAsUTF16String( "Name=%s\n"                              % tempJobName               ) )
+    fileHandle.write( EncodeAsUTF16String( "UserName=%s\n"                          % dialog.sgUserName.value() ) )
     fileHandle.write( EncodeAsUTF16String( "Comment=%s\n"                           % ''                        ) )
     fileHandle.write( EncodeAsUTF16String( "Department=%s\n"                        % ''                        ) )
     fileHandle.write( EncodeAsUTF16String( "Pool=%s\n"                              % dialog.pool.value()       ) )
@@ -598,74 +613,58 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "Frames=%s\n"                            % tempFrameList             ) )
     fileHandle.write( EncodeAsUTF16String( "ChunkSize=%s\n"                         % tempChunkSize             ) )
     fileHandle.write( EncodeAsUTF16String( "Whitelist=%s\n"                         % ""                        ) )
+    fileHandle.write( EncodeAsUTF16String( "PreJobScript=%s\n"                         % ""                        ) )
 #    fileHandle.write( EncodeAsUTF16String( "InitialStatus=%s\n"                     % "Active"                  ) )
 
     extraKVPIndex = 0
     index = 0
     for v in viewsToRender:
+        for tempNode in writeNodes:
 
-		print "writeNodes : {}".format(writeNodes)
-
-		for tempNode in writeNodes:
-
-			if not tempNode.knob( 'disable' ).value():
-				enterLoop = True
-
-				print "IsNodeOrParentNodeSelected(tempNode):{}".format( IsNodeOrParentNodeSelected(tempNode) )
-
+            if not tempNode.knob( 'disable' ).value():
+                enterLoop = True
                 if dialog.selectedOnly.value():
                     enterLoop = enterLoop and IsNodeOrParentNodeSelected(tempNode)
-
                 if enterLoop:
                     #gets the filename/proxy filename and evaluates TCL + vars, but *doesn't* swap frame padding
-					fileValue = nuke.filename( tempNode )
+                    fileValue = nuke.filename( tempNode )
 
-					print "->enterLoop: fileValue:{}".format(fileValue)
+                    if ( root.proxy() and tempNode.knob( 'proxy' ).value() != "" ):
+                        evaluatedValue = tempNode.knob( 'proxy' ).evaluate(view=v)
+                    else:
+                        evaluatedValue = tempNode.knob( 'file' ).evaluate(view=v)
 
-					if ( root.proxy() and tempNode.knob( 'proxy' ).value() != "" ):
-						evaluatedValue = tempNode.knob( 'proxy' ).evaluate(view=v)
-					else:
-						evaluatedValue = tempNode.knob( 'file' ).evaluate(view=v)
+                    if fileValue != None and fileValue != "" and evaluatedValue != None and evaluatedValue != "":
+                        tempPath, tempFilename = os.path.split( evaluatedValue )
 
-					print "->enterLoop: evaluatedValue: {}".format(evaluatedValue)
+                        fileHandle.write( EncodeAsUTF16String( "OutputDirectory%s=%s\n" % ( index, tempPath ) ) )
+                        if IsPadded( os.path.basename( fileValue ) ):
+                            tempFilename = GetPaddedPath( tempFilename )
 
-					if fileValue != None and fileValue != "" and evaluatedValue != None and evaluatedValue != "":
-						print "->fileValue is valid and evaluatedValue is valid"
-						tempPath, tempFilename = os.path.split( evaluatedValue )
+                        paddedPath = os.path.join( tempPath, tempFilename )
+                        #Handle escape character cases
+                        paddedPath = paddedPath.replace( "\\", "/" )
 
-						fileHandle.write( EncodeAsUTF16String( "OutputDirectory%s=%s\n" % ( index, tempPath ) ) )
-						if IsPadded( os.path.basename( fileValue ) ):
-							tempFilename = GetPaddedPath( tempFilename )
+                        fileHandle.write( EncodeAsUTF16String( "OutputFilename%s=%s\n" % (index, paddedPath ) ) )
+                        #Check if the Write Node will be modifying the output's Frame numbers
+                        if tempNode.knob( 'frame_mode' ):
+                            if ( tempNode.knob( 'frame_mode' ).value() == "offset" ):
+                                fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=OutputFrameOffset%s=%s\n" % ( extraKVPIndex, index, str( int( tempNode.knob( 'frame' ).value() ) ) ) ) )
+                                print "->enterLoop: frame_mode: {}".format(str( int( tempNode.knob( 'frame' ).value() ) ))
+                                extraKVPIndex += 1
+                            elif ( tempNode.knob( 'frame_mode' ).value() == "start at" or tempNode.knob( 'frame_mode' ).value() == "start_at"):
+                                franges = nuke.FrameRanges( tempFrameList )
+                                fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=OutputFrameOffset%s=%s\n" % ( extraKVPIndex, index, str( int( tempNode.knob( 'frame' ).value() ) - franges.minFrame() ) ) ) )
+                                print "->enterLoop: frame_mode: {}".format(    str( int( tempNode.knob( 'frame' ).value() ) - franges.minFrame() )    )
+                                extraKVPIndex += 1
+                            else:
+                        #TODO: Handle 'expression'? Would be much harder
+                                pass
 
-						paddedPath = os.path.join( tempPath, tempFilename )
-						#Handle escape character cases
-						paddedPath = paddedPath.replace( "\\", "/" )
-
-						fileHandle.write( EncodeAsUTF16String( "OutputFilename%s=%s\n" % (index, paddedPath ) ) )
-
-						print "->enterLoop paddedPath:{}".format(paddedPath)
-
-						print "->enterLoop: check for frame mode offset"
-						#Check if the Write Node will be modifying the output's Frame numbers
-						if tempNode.knob( 'frame_mode' ):
-							if ( tempNode.knob( 'frame_mode' ).value() == "offset" ):
-								fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=OutputFrameOffset%s=%s\n" % ( extraKVPIndex, index, str( int( tempNode.knob( 'frame' ).value() ) ) ) ) )
-								print "->enterLoop: frame_mode: {}".format(str( int( tempNode.knob( 'frame' ).value() ) ))
-								extraKVPIndex += 1
-							elif ( tempNode.knob( 'frame_mode' ).value() == "start at" or tempNode.knob( 'frame_mode' ).value() == "start_at"):
-								franges = nuke.FrameRanges( tempFrameList )
-								fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=OutputFrameOffset%s=%s\n" % ( extraKVPIndex, index, str( int( tempNode.knob( 'frame' ).value() ) - franges.minFrame() ) ) ) )
-								print "->enterLoop: frame_mode: {}".format(    str( int( tempNode.knob( 'frame' ).value() ) - franges.minFrame() )    )
-								extraKVPIndex += 1
-							else:
-						#TODO: Handle 'expression'? Would be much harder
-								pass
-
-
-						index = index + 1
+                        index = index + 1
 
     # Write the shotgun data.
-    groupBatch = True
+#    groupBatch = True
 
     # Creating a new version in SG
     fileHandle.write( EncodeAsUTF16String( "ExtraInfo0=%s\n" % dialog.sgTaskCombo.value() ) )
@@ -765,7 +764,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     extraKVPIndex += 1
 
 
-    fileHandle.write( EncodeAsUTF16String( "BatchName=%s\n" % dialog.jobName.value() ) )
+#    fileHandle.write( EncodeAsUTF16String( "BatchName=%s\n" % dialog.jobName.value() ) )
     fileHandle.close()
 
     # Update task progress
@@ -781,8 +780,8 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "Version=%s.%s\n"            % (nuke.env[ 'NukeVersionMajor' ], nuke.env['NukeVersionMinor']) ) )
     fileHandle.write( EncodeAsUTF16String( "Threads=%s\n"               % 0                             ) )
     fileHandle.write( EncodeAsUTF16String( "RamUse=%s\n"                % 0                             ) )
-    fileHandle.write( EncodeAsUTF16String( "BatchMode=%s\n"             % True                          ) )
-    fileHandle.write( EncodeAsUTF16String( "BatchModeIsMovie=%s\n"      % tempIsMovie ) )
+#    fileHandle.write( EncodeAsUTF16String( "BatchMode=%s\n"             % True                          ) )
+#    fileHandle.write( EncodeAsUTF16String( "BatchModeIsMovie=%s\n"      % tempIsMovie ) )
 
     if dialog.selectedOnly.value():
         writeNodesStr = ""
