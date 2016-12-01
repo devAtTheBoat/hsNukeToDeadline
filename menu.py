@@ -12,10 +12,10 @@ nuke.tprint( "*------------------------" )
 
 job = 'jobNotSet'
 shot = 'shotNotSet'
-theBoatFolder = 'theBoatFolderNotSet'
+rootFolder = 'rootFolderNotSet'
 
-if os.environ.get("THEBOATFOLDER"):
-    theBoatFolder = os.environ.get("THEBOATFOLDER")
+if os.environ.get("ROOTFOLDER"):
+    rootFolder = os.environ.get("ROOTFOLDER")
 
 if os.environ.get("JOB"):
     job = os.environ.get("JOB")
@@ -23,14 +23,17 @@ if os.environ.get("JOB"):
 if os.environ.get("SHOT"):
     shot = os.environ.get("SHOT")
 
-nuke.tprint( "theBoatFolder: {}\njob: {}\nshot: {}".format(theBoatFolder,job,shot) )
-shotPath = os.path.join(theBoatFolder, job, shot)
+
+rootFolderConfig = os.path.join(rootFolder, "_config")
+
+nuke.tprint( "rootFolder: {}\njob: {}\nshot: {}".format(rootFolder,job,shot) )
+shotPath = os.path.join(rootFolder, job, shot)
 nuke.addFavoriteDir(shot, shotPath)
 
 # THE BOAT TOOLBAR
 toolbar = nuke.toolbar("Nodes") # Access the main toolbar
-theboatNodes = toolbar.addMenu("theboat", icon= theBoatConfigFolder+'/icons/boatIcon.png')
-generalNodes = theboatNodes.addMenu("theboat", icon= theBoatConfigFolder+'/icons/hoveringSombreroIcon.png')
+theboatNodes = toolbar.addMenu("theboat", icon= rootFolderConfig+'/icons/boatIcon.png')
+generalNodes = theboatNodes.addMenu("theboat", icon= rootFolderConfig+'/icons/hoveringSombreroIcon.png')
 
 #LUMA'S GIZMO PATH MANAGER
 if __name__ == '__main__':
@@ -70,7 +73,7 @@ nuke.menu('Nodes').addCommand( "Time/FrameHold", "nuke.createNode('FrameHold')['
 # Hovering Sombrero Nuke to Deadline
 nuke.pluginAddPath('scripts/deadline')
 import hsNukeToDeadline as _hsNukeToDeadline
-theboatNodes.addCommand("Render on the farm...", _hsNukeToDeadline.SubmitToDeadline, icon= theBoatConfigFolder+'/icons/deadlineIcon.png')
+theboatNodes.addCommand("Render on the farm...", _hsNukeToDeadline.SubmitToDeadline, icon= rootFolderConfig+'/icons/deadlineIcon.png')
 
 #nuke.tprint ("Finished running "+job+" config from " + os.path.realpath(__file__)) #for job _config
 nuke.tprint ("Finished running general config from " + os.path.realpath(__file__))
