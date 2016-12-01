@@ -28,7 +28,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
     def __init__( self, maximumPriority, pools, secondaryPools, groups ):
         nukescripts.PythonPanel.__init__( self, "Submit To Deadline", "com.vfxboat.software.deadlinedialog" )
 
-        print "hsNukeToDeadline v1.1.4"
+        print "hsNukeToDeadline v2.0.0"
 
         self.sg = simpleSgApi();
 
@@ -207,23 +207,16 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
 
         self.projectSettings = {}
 
-        # displaying all the project settings environment vars
-        for key, value in os.environ.iteritems():
-            if key.upper().find(os.environ.get("JOB").upper()) > -1:
+        hsProjectSettings = os.environ.get("HS_PROJECT_SETTINGS_KEYS").split(":")
 
-            # removing the job name and the underscore
-                realKeyName = key.replace( os.environ.get("JOB")+"_", "" )
+        for setting in hsProjectSettings:
+            self.projectSettings[setting] = os.environ.get(setting)
 
-                if key.find("Path") > -1:
-                    value = replacePlaceholdersInPaths(value)
-
-                newKnob = nuke.String_Knob("hoveringSombrero_"+realKeyName, realKeyName)
-                self.addKnob( newKnob )
-                newKnob.setValue( value )
-                newKnob.setEnabled( False )
-
-
-                self.projectSettings[realKeyName] = value
+        for key, value in self.projectSettings.iteritems():
+            newKnob = nuke.String_Knob(key, key)
+            self.addKnob( newKnob )
+            newKnob.setValue( value )
+            newKnob.setEnabled( False )
 
 
         ##########################################################################################
@@ -231,7 +224,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         ## Sent by HoveringSombrero
         ##########################################################################################
 
-        DefaultRootFolder = os.getenv("THEBOATFOLDER") if os.getenv("THEBOATFOLDER") else ""
+        DefaultRootFolder = os.getenv("ROOTFOLDER") if os.getenv("ROOTFOLDER") else ""
         DefaultSgUser = os.getenv("SGUSER") if os.getenv("SGUSER") else ""
         DefaultJob = os.getenv("JOB") if os.getenv("JOB") else ""
         DefaultShot = os.getenv("SHOT") if os.getenv("SHOT") else ""
@@ -616,6 +609,8 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "PreJobScript=%s\n"                         % ""                        ) )
 #    fileHandle.write( EncodeAsUTF16String( "InitialStatus=%s\n"                     % "Active"                  ) )
 
+    fileHandle.write( EncodeAsUTF16String( "EventOptIns=%s\n"                 % "DraftEventPluginCustom"  ) )
+
     extraKVPIndex = 0
     index = 0
     for v in viewsToRender:
@@ -664,7 +659,6 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
                         index = index + 1
 
     # Write the shotgun data.
-#    groupBatch = True
 
     # Creating a new version in SG
     fileHandle.write( EncodeAsUTF16String( "ExtraInfo0=%s\n" % dialog.sgTaskCombo.value() ) )
@@ -676,7 +670,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
 
     # ENV KEYS
     EnvKeyValueIndex = 0
-    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "THEBOATFOLDER",os.environ.get("THEBOATFOLDER")) ) )
+    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "ROOTFOLDER",os.environ.get("ROOTFOLDER")) ) )
     EnvKeyValueIndex += 1
     fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "SHOT",os.environ.get("SHOT")) ) )
     EnvKeyValueIndex += 1
@@ -690,10 +684,15 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     # GET THE JOB SPECIFIC ENVIRONMENT VARS (FROM HS)
         # we make everything uppercase because in windows
         # the environments keys are ALWAYS in uppercase
-    for key, value in os.environ.iteritems():
-        if key.upper().find(os.environ["JOB"].upper()) > -1:
-            fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, key,value) ) )
-            EnvKeyValueIndex += 1
+    hsProjectSettings = os.environ.get("HS_PROJECT_SETTINGS_KEYS").split(":")
+
+    for setting in hsProjectSettings:
+
+        key = setting
+        value = os.environ.get(key)
+
+        fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, key,value) ) )
+        EnvKeyValueIndex += 1
 
 
     # Draft Stuff
@@ -736,32 +735,23 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameHeight=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[1]) ) ) )
     extraKVPIndex += 1
 
-    DraftExtraArgs = (''' projectRatio="%s"  ''' % ( dialog.projectSettings.get( uppercaseIfWindows("projectionAspectRatio") ) ) ) # should be in the project conf ini
-    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ( dialog.projectSettings.get( uppercaseIfWindows("fps") ) ) ) # should be in the project conf ini
+    DraftExtraArgs = (''' projectRatio="%s"  ''' % ( dialog.projectSettings.get( "PROJECTIONASPECTRATIO" ) ) ) # should be in the project conf ini
+    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ( dialog.projectSettings.get( "FPS" ) ) ) # should be in the project conf ini
     DraftExtraArgs += (''' projectCodec="%s"  ''' % (dialog.draftCodecCombo.value().replace(" ", "%20")) )
     DraftExtraArgs += (''' projectAppendSlate="%s"  ''' % (dialog.draftAppendSlate.value()) )
     DraftExtraArgs += (''' projectBurnInInfo="%s"  ''' % (dialog.draftBurnInInfo.value()) )
     DraftExtraArgs += (''' projectBurnInMask="%s"  ''' % (dialog.draftBurnInMask.value()) )
     DraftExtraArgs += (''' projectName="%s"  ''' % (dialog.sgProjectName.value().replace(" ", "%20")) )
     DraftExtraArgs += (''' projectDesc="%s"  ''' % (dialog.sgDescription.value().replace(" ", "%20")) )
-    DraftExtraArgs += (''' projectLut="%s"  ''' % ( dialog.projectSettings.get( uppercaseIfWindows("defaultLut") ) ) )
-    DraftExtraArgs += (''' projectOCIOPath="%s"  ''' % ( replacePlaceholdersInPaths(dialog.projectSettings.get( uppercaseIfWindows("defaultOCIOPath") )) ) )
+    DraftExtraArgs += (''' projectLut="%s"  ''' % ( dialog.projectSettings.get( "DEFAULTLUT" ) ) )
+    DraftExtraArgs += (''' projectOCIOPath="%s"  ''' % ( dialog.projectSettings.get( "DEFAULTOCIOPATH" ) ) )
 
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtraArgs=%s\n" % (extraKVPIndex, DraftExtraArgs ) ) )
     extraKVPIndex += 1
 
-
-    # This line renders a mov for shotgun using the Draft_CreateShotgunMovie.py from the repo
-#    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%s=Draft_CreateSGMovie=True\n" % extraKVPIndex ) )
+#    # This line uploads the movie to shotgun
+#    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftUploadToShotgun=%s\n" % (extraKVPIndex,  True ) ) )
 #    extraKVPIndex += 1
-
-#     This line renders a filmstrip for shotgun
-#    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%s=Draft_CreateSGFilmstrip=True\n" % extraKVPIndex ) )
-#    extraKVPIndex += 1
-
-    # This line uploads the movie to shotgun
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftUploadToShotgun=%s\n" % (extraKVPIndex,  True ) ) )
-    extraKVPIndex += 1
 
 
 #    fileHandle.write( EncodeAsUTF16String( "BatchName=%s\n" % dialog.jobName.value() ) )
@@ -820,7 +810,6 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     args.append( jobInfoFile.encode(locale.getpreferredencoding() ) )
     args.append( pluginInfoFile.encode(locale.getpreferredencoding() ) )
     args.append( root.name() ) # SUBMIT NK
-#    args.append( (os.path.join(os.path.dirname(__file__), "draft/slateBackground.dpx") ) )  # SUBMIT SLATE FRAME
 
     tempResults = ""
 
@@ -991,43 +980,10 @@ def CallDeadlineCommand( arguments, hideWindow=True ):
 #    print "FINISHING CallDeadlineCommand " + str ( datetime.datetime.now().time() )
     return output
 
-def uppercaseIfWindows(string):
-	if platform.system().find("windows") > -1:
-		return string.upper()
-	else:
-		return string
-
-def replacePlaceholdersInPaths(path):
-
-# EXAMPLE
-# <THEBOATFOLDER>/<PROJECT>/<PUBLISHNAME>/<STEP>/<PUBLISHNAME>_v<VERSIONNUMBER>/<PUBLISHNAME>_v<VERSIONNUMBER>.<PADDING>.<EXT>
-
-    newPath = []
-
-    for index, directory in enumerate(splitall(path)):
-        replacedDirectory = directory.replace("<THEBOATFOLDER>", os.environ.get("THEBOATFOLDER"))
-        replacedDirectory = replacedDirectory.replace("<PROJECT>", os.environ.get("JOB"))
-
-        versionNumber = ""
-        try:
-            versionNumber = nukescripts.version.version_get(nuke.root().name(),"v")[1]
-        except ValueError as e:
-            print e
-            pass
-
-        replacedDirectory = replacedDirectory.replace("<VERSIONNUMBER>", versionNumber)
-
-        defaultPadding = os.environ.get("JOB") + "_defaultPadding"
-        deliveryExtension = os.environ.get("JOB") + "_deliveryFileFormat"
-
-        replacedDirectory = replacedDirectory.replace("<PADDING>", os.environ.get( uppercaseIfWindows(defaultPadding) ) )
-        replacedDirectory = replacedDirectory.replace("<EXT>", os.environ.get( uppercaseIfWindows(deliveryExtension) ) )
-
-        newPath.insert(index, replacedDirectory)
-
-    return os.path.join(*newPath)
-
 def splitall(path):
+
+    print path
+
     allparts = []
     while 1:
         parts = os.path.split(path)
