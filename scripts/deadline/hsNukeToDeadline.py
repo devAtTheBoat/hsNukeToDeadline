@@ -224,7 +224,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         ## Sent by HoveringSombrero
         ##########################################################################################
 
-        DefaultRootFolder = os.getenv("THEBOATFOLDER") if os.getenv("THEBOATFOLDER") else ""
+        DefaultRootFolder = os.getenv("ROOTFOLDER") if os.getenv("ROOTFOLDER") else ""
         DefaultSgUser = os.getenv("SGUSER") if os.getenv("SGUSER") else ""
         DefaultJob = os.getenv("JOB") if os.getenv("JOB") else ""
         DefaultShot = os.getenv("SHOT") if os.getenv("SHOT") else ""
@@ -609,6 +609,8 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "PreJobScript=%s\n"                         % ""                        ) )
 #    fileHandle.write( EncodeAsUTF16String( "InitialStatus=%s\n"                     % "Active"                  ) )
 
+    fileHandle.write( EncodeAsUTF16String( "EventOptIns=%s\n"                 % "DraftEventPluginCustom"  ) )
+
     extraKVPIndex = 0
     index = 0
     for v in viewsToRender:
@@ -657,7 +659,6 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
                         index = index + 1
 
     # Write the shotgun data.
-#    groupBatch = True
 
     # Creating a new version in SG
     fileHandle.write( EncodeAsUTF16String( "ExtraInfo0=%s\n" % dialog.sgTaskCombo.value() ) )
@@ -669,7 +670,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
 
     # ENV KEYS
     EnvKeyValueIndex = 0
-    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "THEBOATFOLDER",os.environ.get("THEBOATFOLDER")) ) )
+    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "ROOTFOLDER",os.environ.get("ROOTFOLDER")) ) )
     EnvKeyValueIndex += 1
     fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "SHOT",os.environ.get("SHOT")) ) )
     EnvKeyValueIndex += 1
@@ -748,9 +749,10 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtraArgs=%s\n" % (extraKVPIndex, DraftExtraArgs ) ) )
     extraKVPIndex += 1
 
-    # This line uploads the movie to shotgun
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftUploadToShotgun=%s\n" % (extraKVPIndex,  True ) ) )
-    extraKVPIndex += 1
+#    # This line uploads the movie to shotgun
+#    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftUploadToShotgun=%s\n" % (extraKVPIndex,  True ) ) )
+#    extraKVPIndex += 1
+
     fileHandle.close()
 
     # Update task progress

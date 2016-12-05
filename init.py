@@ -12,9 +12,9 @@ try:
     # prints all the environment
 #    print "\n".join([ "{}: {}".format(key, value) for key, value in os.environ.iteritems() ])
 
-    theBoatFolder = os.environ.get("THEBOATFOLDER")
+    rootFolder = os.environ.get("ROOTFOLDER")
     job = os.environ.get("JOB")
-    jobFolder = os.path.join(theBoatFolder, job)
+    jobFolder = os.path.join(rootFolder, job)
 
     nuke.tprint ("Adding {} config scripts".format(job))
 

@@ -17,7 +17,7 @@ try:
     job = os.environ.get("JOB")
 
     jobToolbar = toolbar.addMenu("theboat/"+job)
-    jobToolbar.addCommand("hsNukeToDeadline...", hsNukeToDeadlineDev.SubmitToDeadline, icon= theBoatConfigFolder+'/icons/deadlineIcon.png')
+    jobToolbar.addCommand("hsNukeToDeadline...", hsNukeToDeadlineDev.SubmitToDeadline, icon=rootFolderConfig+'/icons/deadlineIcon.png')
 except:
     print "Error:", sys.exc_info()[0]
     pass
