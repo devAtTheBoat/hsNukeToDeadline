@@ -609,7 +609,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "PreJobScript=%s\n"                         % ""                        ) )
 #    fileHandle.write( EncodeAsUTF16String( "InitialStatus=%s\n"                     % "Active"                  ) )
 
-    fileHandle.write( EncodeAsUTF16String( "EventOptIns=%s\n"                 % "DraftEventPluginCustom"  ) )
+    fileHandle.write( EncodeAsUTF16String( "EventOptIns=%s\n"                 % "FFMPEGEventPlugin"  ) )
 
     extraKVPIndex = 0
     index = 0
@@ -720,38 +720,47 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     extraKVPIndex += 1
 
     # Instead of using the quickdraft use the template, so we can burn-in the info
-    draftTemplateAbsolutePath = os.path.join(os.path.dirname(__file__), 'draft/draftTemplate.py')
+#    draftTemplateAbsolutePath = os.path.join(os.path.dirname(__file__), 'draft/draftTemplate.py')
 
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftTemplate=%s\n" % (extraKVPIndex, draftTemplateAbsolutePath ) ) )
+#    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftTemplate=%s\n" % (extraKVPIndex, draftTemplateAbsolutePath ) ) )
+#    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGUsername=%s\n" % (extraKVPIndex, dialog.sgUserName.value() ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftUsername=%s\n" % (extraKVPIndex, dialog.sgUserName.value() ) ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGEntity=%s\n" % (extraKVPIndex, dialog.sgTaskCombo.value() ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftEntity=%s\n" % (extraKVPIndex, dialog.sgTaskCombo.value() ) ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGVersion=%s\n" % (extraKVPIndex, dialog.sgVersionName.value() ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftVersion=%s\n" % (extraKVPIndex, dialog.sgVersionName.value() ) ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGFrameWidth=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[0]) ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameWidth=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[0]) ) ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGFrameHeight=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[1]) ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameHeight=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[1]) ) ) )
-    extraKVPIndex += 1
+#
+#    DraftExtraArgs = (''' projectRatio="%s"  ''' % ( dialog.projectSettings.get( "PROJECTIONASPECTRATIO" ) ) ) # should be in the project conf ini
+#    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ( dialog.projectSettings.get( "FPS" ) ) ) # should be in the project conf ini
+#    DraftExtraArgs += (''' projectCodec="%s"  ''' % (dialog.draftCodecCombo.value().replace(" ", "%20")) )
+#    DraftExtraArgs += (''' projectAppendSlate="%s"  ''' % (dialog.draftAppendSlate.value()) )
+#    DraftExtraArgs += (''' projectBurnInInfo="%s"  ''' % (dialog.draftBurnInInfo.value()) )
+#    DraftExtraArgs += (''' projectBurnInMask="%s"  ''' % (dialog.draftBurnInMask.value()) )
+#    DraftExtraArgs += (''' projectName="%s"  ''' % (dialog.sgProjectName.value().replace(" ", "%20")) )
+#    DraftExtraArgs += (''' projectDesc="%s"  ''' % (dialog.sgDescription.value().replace(" ", "%20")) )
+#    DraftExtraArgs += (''' projectLut="%s"  ''' % ( dialog.projectSettings.get( "DEFAULTLUT" ) ) )
+#    DraftExtraArgs += (''' projectOCIOPath="%s"  ''' % ( dialog.projectSettings.get( "DEFAULTOCIOPATH" ) ) )
 
-    DraftExtraArgs = (''' projectRatio="%s"  ''' % ( dialog.projectSettings.get( "PROJECTIONASPECTRATIO" ) ) ) # should be in the project conf ini
-    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ( dialog.projectSettings.get( "FPS" ) ) ) # should be in the project conf ini
-    DraftExtraArgs += (''' projectCodec="%s"  ''' % (dialog.draftCodecCombo.value().replace(" ", "%20")) )
-    DraftExtraArgs += (''' projectAppendSlate="%s"  ''' % (dialog.draftAppendSlate.value()) )
-    DraftExtraArgs += (''' projectBurnInInfo="%s"  ''' % (dialog.draftBurnInInfo.value()) )
-    DraftExtraArgs += (''' projectBurnInMask="%s"  ''' % (dialog.draftBurnInMask.value()) )
-    DraftExtraArgs += (''' projectName="%s"  ''' % (dialog.sgProjectName.value().replace(" ", "%20")) )
-    DraftExtraArgs += (''' projectDesc="%s"  ''' % (dialog.sgDescription.value().replace(" ", "%20")) )
-    DraftExtraArgs += (''' projectLut="%s"  ''' % ( dialog.projectSettings.get( "DEFAULTLUT" ) ) )
-    DraftExtraArgs += (''' projectOCIOPath="%s"  ''' % ( dialog.projectSettings.get( "DEFAULTOCIOPATH" ) ) )
 
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtraArgs=%s\n" % (extraKVPIndex, DraftExtraArgs ) ) )
+    InputArgs = "-start_number {} -framerate {}".format(tempFrameList.split(" - ")[0], dialog.projectSettings.get( "FPS" ))
+    FFMPEGExtraArgs = (''' InputArgs0="%s" ''' % ( InputArgs ))
+
+    codec = "prores_ks -profile:v 0 -pix_fmt yuv422p10le -vendor ap10 -qscale:v 9"
+    lutPath = os.path.join(dialog.projectSettings.get( "DEFAULTOCIOPATH" ) , dialog.projectSettings.get( "DEFAULTLUT" ))
+    OutputArgs = "-c:v {} -r {} -s {}  -vf lut3d={}  -c:a copy".format( codec, dialog.projectSettings.get( "FPS" ) , dialog.draftSizeCombo.value() , lutPath)
+    FFMPEGExtraArgs += (''' OutputArgs0="%s" ''' % ( OutputArgs ))
+
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGExtraArgs=%s\n" % (extraKVPIndex, FFMPEGExtraArgs ) ) )
     extraKVPIndex += 1
 
 #    # This line uploads the movie to shotgun
-#    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftUploadToShotgun=%s\n" % (extraKVPIndex,  True ) ) )
-#    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGUploadToShotgun=%s\n" % (extraKVPIndex,  True ) ) )
+    extraKVPIndex += 1
 
     fileHandle.close()
 
