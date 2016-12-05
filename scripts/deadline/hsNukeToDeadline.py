@@ -747,13 +747,13 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
 #    DraftExtraArgs += (''' projectOCIOPath="%s"  ''' % ( dialog.projectSettings.get( "DEFAULTOCIOPATH" ) ) )
 
 
-    InputArgs = "-start_number {} -framerate {}".format(tempFrameList.split(" - ")[0], dialog.projectSettings.get( "FPS" ))
+    InputArgs = "-start_number {} -framerate {}".format(tempFrameList.split("-")[0], dialog.projectSettings.get( "FPS" ))
     FFMPEGExtraArgs = (''' InputArgs0="%s" ''' % ( InputArgs ))
 
     codec = "prores_ks -profile:v 0 -pix_fmt yuv422p10le -vendor ap10 -qscale:v 9"
-    lutPath = os.path.join(dialog.projectSettings.get( "DEFAULTOCIOPATH" ) , dialog.projectSettings.get( "DEFAULTLUT" ))
+    lutPath = os.path.join( os.path.split(dialog.projectSettings.get( "DEFAULTOCIOPATH" ))[0] , dialog.projectSettings.get( "DEFAULTLUT" ))
     OutputArgs = "-c:v {} -r {} -s {}  -vf lut3d={}  -c:a copy".format( codec, dialog.projectSettings.get( "FPS" ) , dialog.draftSizeCombo.value() , lutPath)
-    FFMPEGExtraArgs += (''' OutputArgs0="%s" ''' % ( OutputArgs ))
+    FFMPEGExtraArgs += (''' OutputArgs="%s" ''' % ( OutputArgs ))
 
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGExtraArgs=%s\n" % (extraKVPIndex, FFMPEGExtraArgs ) ) )
     extraKVPIndex += 1
