@@ -810,7 +810,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
         codec = codec.replace("<gop_size>", str(lgop))
 
     lutPath = os.path.join( dialog.projectSettings.get( "DEFAULTLUT" ) )
-    OutputArgs = "-c:v {} -r {} -s {}  -vf lut3d={}  -c:a copy".format( codec, dialog.projectSettings.get( "FPS" ) , dialog.draftSizeCombo.value() , lutPath)
+    OutputArgs = "-c:v {} -r {} -s {}  -vf lut3d='{}'  -c:a copy".format( codec, dialog.projectSettings.get( "FPS" ) , dialog.draftSizeCombo.value() , lutPath)
     FFMPEGExtraArgs += (''' OutputArgs="%s" ''' % ( OutputArgs ))
 
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGExtraArgs=%s\n" % (extraKVPIndex, FFMPEGExtraArgs ) ) )
