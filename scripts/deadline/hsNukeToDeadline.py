@@ -28,7 +28,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
     def __init__( self, maximumPriority, pools, secondaryPools, groups ):
         nukescripts.PythonPanel.__init__( self, "Submit To Deadline", "com.vfxboat.software.deadlinedialog" )
 
-        print "hsNukeToDeadline v3.0.1"
+        print "hsNukeToDeadline v3.0.2"
 
         self.sg = simpleSgApi();
 
