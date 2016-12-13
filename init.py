@@ -6,23 +6,18 @@
 
 import nuke, os, sys, re
 
-theBoatFolder = os.environ["THEBOATFOLDER"]
-theBoatConfigFolder = os.path.join(theBoatFolder, "_config")
+rootFolder = os.environ.get("ROOTFOLDER")
+rootFolderConfig = os.path.join(rootFolder, "_config")
 
 nuke.tprint( "*------------------------" )
 nuke.tprint( "* This is theboat init.py" )
 nuke.tprint( "*", os.path.realpath(__file__) )
 nuke.tprint( "*------------------------" )
-nuke.tprint( "theBoatFolder:", theBoatFolder )
-nuke.tprint( "theBoatConfigFolder:", theBoatConfigFolder )
-
+nuke.tprint( "rootFolder:", rootFolder )
+nuke.tprint( "rootFolderConfig:", rootFolderConfig )
 
 job = 'jobNotSet'
 shot = 'shotNotSet'
-theBoatFolder = 'theBoatFolderNotSet'
-
-if os.environ.get("THEBOATFOLDER"):
-    theBoatFolder = os.environ.get("THEBOATFOLDER")
 
 if os.environ.get("JOB"):
     job = os.environ.get("JOB")
@@ -30,27 +25,11 @@ if os.environ.get("JOB"):
 if os.environ.get("SHOT"):
     shot = os.environ.get("SHOT")
 
-jobConfig = os.path.join(theBoatFolder ,  job  , '_config')
+jobConfig = os.path.join(rootFolder ,  job  , '_config')
+
 if os.path.exists(jobConfig):
     print ('    Adding path '+jobConfig)
     nuke.pluginAddPath(jobConfig)
-
-
-    #nuke.tprint ("Plugins: Fetching job directories")
-#jobs = os.listdir(theBoatFolder)
-#
-#
-#
-#print ('    Adding path %s' % os.path.join(theBoatConfigFolder, "scripts"))
-#nuke.pluginAddPath( os.path.join(theBoatConfigFolder, "scripts") )
-#
-#for job in jobs:
-#    jobConfig = os.path.join(theBoatFolder ,  job  , '_config')
-#    if os.path.exists(jobConfig):
-#        print ('    Adding path '+jobConfig)
-#        nuke.pluginAddPath(jobConfig)
-#
-#nuke.tprint( "Plugins: Finished adding plugins" )
 
 
 #nuke.tprint( "Plugins: import pasteToSelected" )
@@ -145,7 +124,7 @@ Windows:
 # without the need to define any environment variables. Note that if this is
 # defined and points to an existing directory, other possible search locations
 # will be ignored, unless the `__main__` entry point code is modified below.
-CUSTOM_GIZMO_LOCATION = theBoatConfigFolder
+CUSTOM_GIZMO_LOCATION = rootFolderConfig
 
 class GizmoPathManager(object):
     '''

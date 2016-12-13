@@ -28,7 +28,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
     def __init__( self, maximumPriority, pools, secondaryPools, groups ):
         nukescripts.PythonPanel.__init__( self, "Submit To Deadline", "com.vfxboat.software.deadlinedialog" )
 
-        print "hsNukeToDeadline v1.1.4"
+        print "hsNukeToDeadline v3.0.1"
 
         self.sg = simpleSgApi();
 
@@ -172,7 +172,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
 #        self.draftUploadEnable.setTooltip( "If enabled, the Draft Job will be uploaded to Shotgun" )
 #        self.draftUploadEnable.setValue( True )
 #
-        self.draftCodecCombo = nuke.Enumeration_Knob( "Deadline_draftCodec", "Draft Codec", ["DNXHD", "H264"] )
+        self.draftCodecCombo = nuke.Enumeration_Knob( "Deadline_draftCodec", "Draft Codec", ["DNxHD", "H264", "ProRes Proxy", "ProRes LT", "ProRes", "ProRes HQ"] )
         self.addKnob( self.draftCodecCombo )
         self.draftCodecCombo.setTooltip( "Select the Draft Codec" )
 
@@ -207,23 +207,16 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
 
         self.projectSettings = {}
 
-        # displaying all the project settings environment vars
-        for key, value in os.environ.iteritems():
-            if key.upper().find(os.environ.get("JOB").upper()) > -1:
+        hsProjectSettings = os.environ.get("HS_PROJECT_SETTINGS_KEYS").split(":")
 
-            # removing the job name and the underscore
-                realKeyName = key.replace( os.environ.get("JOB")+"_", "" )
+        for setting in hsProjectSettings:
+            self.projectSettings[setting] = os.environ.get(setting)
 
-                if key.find("Path") > -1:
-                    value = replacePlaceholdersInPaths(value)
-
-                newKnob = nuke.String_Knob("hoveringSombrero_"+realKeyName, realKeyName)
-                self.addKnob( newKnob )
-                newKnob.setValue( value )
-                newKnob.setEnabled( False )
-
-
-                self.projectSettings[realKeyName] = value
+        for key, value in self.projectSettings.iteritems():
+            newKnob = nuke.String_Knob(key, key)
+            self.addKnob( newKnob )
+            newKnob.setValue( value )
+            newKnob.setEnabled( False )
 
 
         ##########################################################################################
@@ -231,7 +224,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
         ## Sent by HoveringSombrero
         ##########################################################################################
 
-        DefaultRootFolder = os.getenv("THEBOATFOLDER") if os.getenv("THEBOATFOLDER") else ""
+        DefaultRootFolder = os.getenv("ROOTFOLDER") if os.getenv("ROOTFOLDER") else ""
         DefaultSgUser = os.getenv("SGUSER") if os.getenv("SGUSER") else ""
         DefaultJob = os.getenv("JOB") if os.getenv("JOB") else ""
         DefaultShot = os.getenv("SHOT") if os.getenv("SHOT") else ""
@@ -577,6 +570,50 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
 #    global FormatsDict
     viewsToRender = nuke.views()
 
+
+#    """
+#    DNxHD
+#    Project Format	Resolution	Frame Size	Bits	FPS	<bitrate>
+#    1080i / 59.94	DNxHD 220	1920 x 1080	8	29.97	220Mb
+#    1080i / 50	    DNxHD 185	1920 x 1080	8	25	    185Mb
+#    1080p / 25	    DNxHD 185	1920 x 1080	8	25	    185Mb
+#    1080p / 24	    DNxHD 175	1920 x 1080	8	24	    175Mb
+#    1080p / 23.976	DNxHD 175	1920 x 1080	8	23.976	175Mb
+#    1080p / 29.97	DNxHD 45	1920 x 1080	8	29.97	45Mb
+#    720p / 59.94	DNxHD 220	1280x720	8	59.94	220Mb
+#    720p / 50	    DNxHD 175	1280x720	8	50	    175Mb
+#    720p / 23.976	DNxHD 90	1280x720	8	23.976	90Mb
+#
+#    for interlaced content
+#    -flags +ildct
+#
+#    """
+
+    DNxHDBitrates = {
+        "1080p30" : "175M",
+        "1080p29.97" : "175M",
+        "1080p25" : "175M",
+        "1080p24" : "175M",
+        "1080p23.976" : "175M",
+
+        "720p30" : "90M",
+        "720p29.97" : "90M",
+        "720p25" : "90M",
+        "720p24" : "90M",
+        "720p23.976" : "90M"
+    }
+
+
+    FFMPEGCodecs = {
+        "DNxHD" : "dnxhd -b:v <video_bitrate>",
+        "H264" : "libx264 -vf format=yuv420p -b:v <video_bitrate> -preset medium -crf 18",
+        "ProRes Proxy" : "prores_ks -profile:v 0 -pix_fmt yuv422p10le -vendor ap10 -qscale:v 9",
+        "ProRes LT" : "prores_ks -profile:v 1 -pix_fmt yuv422p10le -vendor ap10 -qscale:v 9",
+        "ProRes" : "prores_ks -profile:v 2 -pix_fmt yuv422p10le -vendor ap10 -qscale:v 9",
+        "ProRes HQ" : "prores_ks -profile:v 3 -pix_fmt yuv422p10le -vendor ap10 -qscale:v 9"
+    }
+
+
     print "Preparing job #%d for submission.." % jobCount
 
     # Getting all of the project settings environment variables
@@ -616,6 +653,8 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "PreJobScript=%s\n"                         % ""                        ) )
 #    fileHandle.write( EncodeAsUTF16String( "InitialStatus=%s\n"                     % "Active"                  ) )
 
+    fileHandle.write( EncodeAsUTF16String( "EventOptIns=%s\n"                 % "FFMPEGEventPlugin"  ) )
+
     extraKVPIndex = 0
     index = 0
     for v in viewsToRender:
@@ -625,10 +664,10 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
                 enterLoop = True
                 if dialog.selectedOnly.value():
                     enterLoop = enterLoop and IsNodeOrParentNodeSelected(tempNode)
+
                 if enterLoop:
                     #gets the filename/proxy filename and evaluates TCL + vars, but *doesn't* swap frame padding
                     fileValue = nuke.filename( tempNode )
-
                     if ( root.proxy() and tempNode.knob( 'proxy' ).value() != "" ):
                         evaluatedValue = tempNode.knob( 'proxy' ).evaluate(view=v)
                     else:
@@ -664,7 +703,6 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
                         index = index + 1
 
     # Write the shotgun data.
-#    groupBatch = True
 
     # Creating a new version in SG
     fileHandle.write( EncodeAsUTF16String( "ExtraInfo0=%s\n" % dialog.sgTaskCombo.value() ) )
@@ -676,7 +714,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
 
     # ENV KEYS
     EnvKeyValueIndex = 0
-    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "THEBOATFOLDER",os.environ.get("THEBOATFOLDER")) ) )
+    fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "ROOTFOLDER",os.environ.get("ROOTFOLDER")) ) )
     EnvKeyValueIndex += 1
     fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, "SHOT",os.environ.get("SHOT")) ) )
     EnvKeyValueIndex += 1
@@ -690,10 +728,15 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     # GET THE JOB SPECIFIC ENVIRONMENT VARS (FROM HS)
         # we make everything uppercase because in windows
         # the environments keys are ALWAYS in uppercase
-    for key, value in os.environ.iteritems():
-        if key.upper().find(os.environ["JOB"].upper()) > -1:
-            fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, key,value) ) )
-            EnvKeyValueIndex += 1
+    hsProjectSettings = os.environ.get("HS_PROJECT_SETTINGS_KEYS").split(":")
+
+    for setting in hsProjectSettings:
+
+        key = setting
+        value = os.environ.get(key)
+
+        fileHandle.write( EncodeAsUTF16String( "EnvironmentKeyValue%s=%s=%s\n"  % (EnvKeyValueIndex, key,value) ) )
+        EnvKeyValueIndex += 1
 
 
     # Draft Stuff
@@ -719,52 +762,64 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     extraKVPIndex += 1
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=EntityId=%s\n"      % (extraKVPIndex, dialog.sgEntityId.value() ) ) )
     extraKVPIndex += 1
-
-    # Instead of using the quickdraft use the template, so we can burn-in the info
-    draftTemplateAbsolutePath = os.path.join(os.path.dirname(__file__), 'draft/draftTemplate.py')
-
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftTemplate=%s\n" % (extraKVPIndex, draftTemplateAbsolutePath ) ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGUsername=%s\n" % (extraKVPIndex, dialog.sgUserName.value() ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftUsername=%s\n" % (extraKVPIndex, dialog.sgUserName.value() ) ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGEntity=%s\n" % (extraKVPIndex, dialog.sgTaskCombo.value() ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftEntity=%s\n" % (extraKVPIndex, dialog.sgTaskCombo.value() ) ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGVersion=%s\n" % (extraKVPIndex, dialog.sgVersionName.value() ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftVersion=%s\n" % (extraKVPIndex, dialog.sgVersionName.value() ) ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGFrameWidth=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[0]) ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameWidth=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[0]) ) ) )
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGFrameHeight=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[1]) ) ) )
     extraKVPIndex += 1
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftFrameHeight=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[1]) ) ) )
+#
+#    DraftExtraArgs = (''' projectRatio="%s"  ''' % ( dialog.projectSettings.get( "PROJECTIONASPECTRATIO" ) ) ) # should be in the project conf ini
+#    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ( dialog.projectSettings.get( "FPS" ) ) ) # should be in the project conf ini
+#    DraftExtraArgs += (''' projectCodec="%s"  ''' % (dialog.draftCodecCombo.value().replace(" ", "%20")) )
+#    DraftExtraArgs += (''' projectAppendSlate="%s"  ''' % (dialog.draftAppendSlate.value()) )
+#    DraftExtraArgs += (''' projectBurnInInfo="%s"  ''' % (dialog.draftBurnInInfo.value()) )
+#    DraftExtraArgs += (''' projectBurnInMask="%s"  ''' % (dialog.draftBurnInMask.value()) )
+#    DraftExtraArgs += (''' projectName="%s"  ''' % (dialog.sgProjectName.value().replace(" ", "%20")) )
+#    DraftExtraArgs += (''' projectDesc="%s"  ''' % (dialog.sgDescription.value().replace(" ", "%20")) )
+#    DraftExtraArgs += (''' projectLut="%s"  ''' % ( dialog.projectSettings.get( "DEFAULTLUT" ) ) )
+#    DraftExtraArgs += (''' projectOCIOPath="%s"  ''' % ( dialog.projectSettings.get( "DEFAULTOCIOPATH" ) ) )
+
+
+    InputArgs = "-start_number {} -framerate {}".format(tempFrameList.split("-")[0], dialog.projectSettings.get( "FPS" ))
+    FFMPEGExtraArgs = (''' InputArgs0="%s" ''' % ( InputArgs ))
+
+    codec = FFMPEGCodecs[dialog.draftCodecCombo.value()]
+
+    size = dialog.draftSizeCombo.value()
+    width = int(size.split("x")[0])
+    height = int(size.split("x")[1])
+    fps = float(dialog.projectSettings.get( "FPS" ))
+    if fps.is_integer(): # remove the .0 in the whole numbers
+        fps = int(fps)
+
+    if dialog.draftCodecCombo.value() == "DNxHD":
+
+        movieOuputFormat = "{}p{}".format(height, fps)
+        codec = codec.replace("<video_bitrate>", DNxHDBitrates[movieOuputFormat])
+
+    if dialog.draftCodecCombo.value() == "H264":
+        bitrate = (width * height * fps * 2 * 0.07) / 1000
+        lgop = int( fps / 2 )
+
+        codec = codec.replace("<video_bitrate>", str(bitrate))
+        codec = codec.replace("<gop_size>", str(lgop))
+
+    lutPath = os.path.join( dialog.projectSettings.get( "DEFAULTLUT" ) )
+    OutputArgs = "-c:v {} -r {} -s {}  -vf lut3d={}  -c:a copy".format( codec, dialog.projectSettings.get( "FPS" ) , dialog.draftSizeCombo.value() , lutPath)
+    FFMPEGExtraArgs += (''' OutputArgs="%s" ''' % ( OutputArgs ))
+
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGExtraArgs=%s\n" % (extraKVPIndex, FFMPEGExtraArgs ) ) )
     extraKVPIndex += 1
 
-    DraftExtraArgs = (''' projectRatio="%s"  ''' % ( dialog.projectSettings.get( uppercaseIfWindows("projectionAspectRatio") ) ) ) # should be in the project conf ini
-    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ( dialog.projectSettings.get( uppercaseIfWindows("fps") ) ) ) # should be in the project conf ini
-    DraftExtraArgs += (''' projectCodec="%s"  ''' % (dialog.draftCodecCombo.value().replace(" ", "%20")) )
-    DraftExtraArgs += (''' projectAppendSlate="%s"  ''' % (dialog.draftAppendSlate.value()) )
-    DraftExtraArgs += (''' projectBurnInInfo="%s"  ''' % (dialog.draftBurnInInfo.value()) )
-    DraftExtraArgs += (''' projectBurnInMask="%s"  ''' % (dialog.draftBurnInMask.value()) )
-    DraftExtraArgs += (''' projectName="%s"  ''' % (dialog.sgProjectName.value().replace(" ", "%20")) )
-    DraftExtraArgs += (''' projectDesc="%s"  ''' % (dialog.sgDescription.value().replace(" ", "%20")) )
-    DraftExtraArgs += (''' projectLut="%s"  ''' % ( dialog.projectSettings.get( uppercaseIfWindows("defaultLut") ) ) )
-    DraftExtraArgs += (''' projectOCIOPath="%s"  ''' % ( replacePlaceholdersInPaths(dialog.projectSettings.get( uppercaseIfWindows("defaultOCIOPath") )) ) )
-
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftExtraArgs=%s\n" % (extraKVPIndex, DraftExtraArgs ) ) )
+#    # This line uploads the movie to shotgun
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGUploadToShotgun=%s\n" % (extraKVPIndex,  True ) ) )
     extraKVPIndex += 1
 
-
-    # This line renders a mov for shotgun using the Draft_CreateShotgunMovie.py from the repo
-#    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%s=Draft_CreateSGMovie=True\n" % extraKVPIndex ) )
-#    extraKVPIndex += 1
-
-#     This line renders a filmstrip for shotgun
-#    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%s=Draft_CreateSGFilmstrip=True\n" % extraKVPIndex ) )
-#    extraKVPIndex += 1
-
-    # This line uploads the movie to shotgun
-    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=DraftUploadToShotgun=%s\n" % (extraKVPIndex,  True ) ) )
-    extraKVPIndex += 1
-
-
-#    fileHandle.write( EncodeAsUTF16String( "BatchName=%s\n" % dialog.jobName.value() ) )
     fileHandle.close()
 
     # Update task progress
@@ -780,8 +835,6 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     fileHandle.write( EncodeAsUTF16String( "Version=%s.%s\n"            % (nuke.env[ 'NukeVersionMajor' ], nuke.env['NukeVersionMinor']) ) )
     fileHandle.write( EncodeAsUTF16String( "Threads=%s\n"               % 0                             ) )
     fileHandle.write( EncodeAsUTF16String( "RamUse=%s\n"                % 0                             ) )
-#    fileHandle.write( EncodeAsUTF16String( "BatchMode=%s\n"             % True                          ) )
-#    fileHandle.write( EncodeAsUTF16String( "BatchModeIsMovie=%s\n"      % tempIsMovie ) )
 
     if dialog.selectedOnly.value():
         writeNodesStr = ""
@@ -820,7 +873,6 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     args.append( jobInfoFile.encode(locale.getpreferredencoding() ) )
     args.append( pluginInfoFile.encode(locale.getpreferredencoding() ) )
     args.append( root.name() ) # SUBMIT NK
-#    args.append( (os.path.join(os.path.dirname(__file__), "draft/slateBackground.dpx") ) )  # SUBMIT SLATE FRAME
 
     tempResults = ""
 
@@ -991,43 +1043,10 @@ def CallDeadlineCommand( arguments, hideWindow=True ):
 #    print "FINISHING CallDeadlineCommand " + str ( datetime.datetime.now().time() )
     return output
 
-def uppercaseIfWindows(string):
-	if platform.system().find("windows") > -1:
-		return string.upper()
-	else:
-		return string
-
-def replacePlaceholdersInPaths(path):
-
-# EXAMPLE
-# <THEBOATFOLDER>/<PROJECT>/<PUBLISHNAME>/<STEP>/<PUBLISHNAME>_v<VERSIONNUMBER>/<PUBLISHNAME>_v<VERSIONNUMBER>.<PADDING>.<EXT>
-
-    newPath = []
-
-    for index, directory in enumerate(splitall(path)):
-        replacedDirectory = directory.replace("<THEBOATFOLDER>", os.environ.get("THEBOATFOLDER"))
-        replacedDirectory = replacedDirectory.replace("<PROJECT>", os.environ.get("JOB"))
-
-        versionNumber = ""
-        try:
-            versionNumber = nukescripts.version.version_get(nuke.root().name(),"v")[1]
-        except ValueError as e:
-            print e
-            pass
-
-        replacedDirectory = replacedDirectory.replace("<VERSIONNUMBER>", versionNumber)
-
-        defaultPadding = os.environ.get("JOB") + "_defaultPadding"
-        deliveryExtension = os.environ.get("JOB") + "_deliveryFileFormat"
-
-        replacedDirectory = replacedDirectory.replace("<PADDING>", os.environ.get( uppercaseIfWindows(defaultPadding) ) )
-        replacedDirectory = replacedDirectory.replace("<EXT>", os.environ.get( uppercaseIfWindows(deliveryExtension) ) )
-
-        newPath.insert(index, replacedDirectory)
-
-    return os.path.join(*newPath)
-
 def splitall(path):
+
+    print path
+
     allparts = []
     while 1:
         parts = os.path.split(path)
