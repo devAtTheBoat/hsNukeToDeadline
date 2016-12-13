@@ -28,7 +28,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
     def __init__( self, maximumPriority, pools, secondaryPools, groups ):
         nukescripts.PythonPanel.__init__( self, "Submit To Deadline", "com.vfxboat.software.deadlinedialog" )
 
-        print "hsNukeToDeadline v3.0.0"
+        print "hsNukeToDeadline v3.0.1"
 
         self.sg = simpleSgApi();
 
@@ -809,7 +809,7 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
         codec = codec.replace("<video_bitrate>", str(bitrate))
         codec = codec.replace("<gop_size>", str(lgop))
 
-    lutPath = os.path.join( os.path.split(dialog.projectSettings.get( "DEFAULTOCIOPATH" ))[0], 'luts' , dialog.projectSettings.get( "DEFAULTLUT" ))
+    lutPath = os.path.join( dialog.projectSettings.get( "DEFAULTLUT" ) )
     OutputArgs = "-c:v {} -r {} -s {}  -vf lut3d={}  -c:a copy".format( codec, dialog.projectSettings.get( "FPS" ) , dialog.draftSizeCombo.value() , lutPath)
     FFMPEGExtraArgs += (''' OutputArgs="%s" ''' % ( OutputArgs ))
 

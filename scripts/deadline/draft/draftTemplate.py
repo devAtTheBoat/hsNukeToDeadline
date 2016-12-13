@@ -30,7 +30,7 @@ from DraftParamParser import ReplaceFilenameHashesWithNumber # For reading frame
 print "-----------------------"
 print "*VFXBOAT "
 print "*DAILIES DRAFT TEMPLATE "
-print "*v1.1.1 "
+print "*v1.1.2 "
 print "-----------------------"
 
 expectedTypes = {
@@ -120,7 +120,7 @@ if (imageInfo.timecode):
         firstTimecodeFrames = firstTimecode[3]
 
         if ( firstTimecodeFrames == "00" ):
-            firstTimecodeFrames = str( framerate - 1 )
+            firstTimecodeFrames = str( int(float(framerate)) - 1 )
 
             if ( firstTimecodeSeconds == "00" ):
                 firstTimecodeSeconds = "59"
@@ -131,19 +131,19 @@ if (imageInfo.timecode):
                     if ( firstTimecodeHour == "00" ):
                         firstTimecodeHour = "23"
                     else:
-                        firstTimecodeHour = str(int(firstTimecodeHour) - 1).zfill(2)
+                        firstTimecodeHour = str(int(float(firstTimecodeHour)) - 1).zfill(2)
                 else:
-                    firstTimecodeMinutes = str(int(firstTimecodeMinutes) - 1).zfill(2)
+                    firstTimecodeMinutes = str(int(float(firstTimecodeMinutes)) - 1).zfill(2)
             else:
-                firstTimecodeSeconds = str(int(firstTimecodeSeconds) - 1).zfill(2)
+                firstTimecodeSeconds = str(int(float(firstTimecodeSeconds)) - 1).zfill(2)
         else:
-            firstTimecodeFrames = str(int(firstTimecodeFrames) - 1).zfill(2)
+            firstTimecodeFrames = str(int(float(firstTimecodeFrames)) - 1).zfill(2)
 
         print "This shouldn't make any errors"
-        slateTimecode = "%s:%s:%s:%s" % (   str( int(firstTimecodeHour) ).zfill(2),
-                                            str( int(firstTimecodeMinutes) ).zfill(2),
-                                            str( int(firstTimecodeSeconds) ).zfill(2),
-                                            str( int(firstTimecodeFrames) ).zfill(2)  )
+        slateTimecode = "%s:%s:%s:%s" % (   str( int( float(firstTimecodeHour)) ).zfill(2)  ,
+                                            str( int( float(firstTimecodeMinutes)) ).zfill(2),
+                                            str( int( float(firstTimecodeSeconds)) ).zfill(2),
+                                            str( int( float(firstTimecodeFrames)) ).zfill(2)  )
 
         try:
             print "The slate timecode starts at: %s" % slateTimecode
