@@ -46,7 +46,17 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
 
         # Job Name
         # Get the jobname from the filename
-        job = os.path.basename( nuke.Root().name() )
+
+        try:
+            # use the name of the write node
+            DefaultVersionName = os.path.basename( nuke.selectedNode().knob('file').value() ).split(".")[0]
+        except:
+            # use the name of the nk
+            DefaultVersionName = os.path.splitext(  os.path.basename( nuke.Root().name() )  )[0]
+
+        DefaultVersionName = DefaultVersionName if DefaultVersionName else ""
+
+        job = DefaultVersionName
         self.jobName = nuke.String_Knob( "Deadline_JobName", "Job Name" )
         self.addKnob( self.jobName )
         self.jobName.setTooltip( "The name of your job. This is optional, and if left blank, it will default to 'Untitled'." )
