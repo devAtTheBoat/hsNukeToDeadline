@@ -3,3 +3,5 @@
 # Example .gitignore files: https://github.com/github/gitignore
 *.*
 !hsNukeToDeadline.py
+!init.py
+!menu.py
