@@ -28,7 +28,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
     def __init__( self, maximumPriority, pools, secondaryPools, groups ):
         nukescripts.PythonPanel.__init__( self, "Submit To Deadline", "com.vfxboat.software.deadlinedialog" )
 
-        print "hsNukeToDeadline v3.0.3"
+        print "hsNukeToDeadline v3.0.3 burn in"
 
         self.sg = simpleSgApi();
 
@@ -798,17 +798,20 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     InputArgs = "-start_number {} -framerate {}".format(tempFrameList.split("-")[0], dialog.projectSettings.get( "FPS" ))
     FFMPEGExtraArgs = (''' InputArgs0="%s" ''' % ( InputArgs ))
 
+
+    """ THIS SHOULD BE EN FFMPEGEVENTPLUGIN """
+
     codec = FFMPEGCodecs[dialog.draftCodecCombo.value()]
 
     size = dialog.draftSizeCombo.value()
     width = int(size.split("x")[0])
     height = int(size.split("x")[1])
     fps = float(dialog.projectSettings.get( "FPS" ))
+
     if fps.is_integer(): # remove the .0 in the whole numbers
         fps = int(fps)
 
     if dialog.draftCodecCombo.value() == "DNxHD":
-
         movieOuputFormat = "{}p{}".format(height, fps)
         codec = codec.replace("<video_bitrate>", DNxHDBitrates[movieOuputFormat])
 
@@ -819,9 +822,38 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
         codec = codec.replace("<video_bitrate>", str(bitrate))
         codec = codec.replace("<gop_size>", str(lgop))
 
+    # adding the lut
     lutPath = os.path.join( dialog.projectSettings.get( "DEFAULTLUT" ) )
-    OutputArgs = "-c:v {} -r {} -s {}  -vf lut3d='{}'  -c:a copy".format( codec, dialog.projectSettings.get( "FPS" ) , dialog.draftSizeCombo.value() , lutPath)
+
+    filters = []
+
+    filters.append( "lut3d='{}',".format(lutPath) )
+
+    # adding the scale filter
+    filters.append( "scale={}:{}:force_original_aspect_ratio=decrease,pad={}:{}:(ow-iw)/2:(oh-ih)/2".format(width, height, width, height) )
+#
+#    # adding the frame path
+#    paddedPathSplittedByPad = re.split('#.', paddedPath)
+#    pathBeforePad = paddedPathSplittedByPad[0]
+#    pathAfterPad = paddedPathSplittedByPad[-1]
+#    filters += "drawtext=\"fontfile={}:text='{}.%\{eif\\:n+{}\}.{}'\",".format(fontfile, pathBeforePad, tempFrameList.split("-")[0], pathAfterPad)
+
+
+
+
+    # adding the version name
+
+
+
+    OutputArgs = "-c:v {} -r {} -vf \"{}\" -c:a copy".format( codec, fps , ','.join(filters))
+
+
+    """ END """
+
+
     FFMPEGExtraArgs += (''' OutputArgs="%s" ''' % ( OutputArgs ))
+
+
 
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGExtraArgs=%s\n" % (extraKVPIndex, FFMPEGExtraArgs ) ) )
     extraKVPIndex += 1
