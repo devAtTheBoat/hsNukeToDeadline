@@ -72,8 +72,8 @@ nuke.menu('Nodes').addCommand( "Time/FrameHold", "nuke.createNode('FrameHold')['
 
 # Hovering Sombrero Nuke to Deadline
 nuke.pluginAddPath('scripts/deadline')
-import hsNukeToDeadline as _hsNukeToDeadline
-theboatNodes.addCommand("Render on the farm...", _hsNukeToDeadline.SubmitToDeadline, icon= rootFolderConfig+'/icons/deadlineIcon.png')
+from scripts.deadline import hsNukeToDeadline as _hsNukeToDeadlineDev
+theboatNodes.addCommand("Render on the farm _dev...", _hsNukeToDeadlineDev.SubmitToDeadline, icon= rootFolderConfig+'/icons/deadlineIcon.png')
 
 #nuke.tprint ("Finished running "+job+" config from " + os.path.realpath(__file__)) #for job _config
 nuke.tprint ("Finished running general config from " + os.path.realpath(__file__))
