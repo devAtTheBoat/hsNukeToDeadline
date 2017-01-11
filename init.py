@@ -6,6 +6,7 @@
 
 import nuke, os, sys, re
 
+
 rootFolder = os.environ.get("ROOTFOLDER")
 rootFolderConfig = os.path.join(rootFolder, "_config")
 

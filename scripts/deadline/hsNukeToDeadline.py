@@ -28,7 +28,7 @@ class HS_DeadlineDialog( nukescripts.PythonPanel ):
     def __init__( self, maximumPriority, pools, secondaryPools, groups ):
         nukescripts.PythonPanel.__init__( self, "Submit To Deadline", "com.vfxboat.software.deadlinedialog" )
 
-        print "hsNukeToDeadline v3.0.3"
+        print "hsNukeToDeadline v3.0.3 burn in"
 
         self.sg = simpleSgApi();
 
@@ -580,50 +580,6 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
 #    global FormatsDict
     viewsToRender = nuke.views()
 
-
-#    """
-#    DNxHD
-#    Project Format	Resolution	Frame Size	Bits	FPS	<bitrate>
-#    1080i / 59.94	DNxHD 220	1920 x 1080	8	29.97	220Mb
-#    1080i / 50	    DNxHD 185	1920 x 1080	8	25	    185Mb
-#    1080p / 25	    DNxHD 185	1920 x 1080	8	25	    185Mb
-#    1080p / 24	    DNxHD 175	1920 x 1080	8	24	    175Mb
-#    1080p / 23.976	DNxHD 175	1920 x 1080	8	23.976	175Mb
-#    1080p / 29.97	DNxHD 45	1920 x 1080	8	29.97	45Mb
-#    720p / 59.94	DNxHD 220	1280x720	8	59.94	220Mb
-#    720p / 50	    DNxHD 175	1280x720	8	50	    175Mb
-#    720p / 23.976	DNxHD 90	1280x720	8	23.976	90Mb
-#
-#    for interlaced content
-#    -flags +ildct
-#
-#    """
-
-    DNxHDBitrates = {
-        "1080p30" : "175M",
-        "1080p29.97" : "175M",
-        "1080p25" : "175M",
-        "1080p24" : "175M",
-        "1080p23.976" : "175M",
-
-        "720p30" : "90M",
-        "720p29.97" : "90M",
-        "720p25" : "90M",
-        "720p24" : "90M",
-        "720p23.976" : "90M"
-    }
-
-
-    FFMPEGCodecs = {
-        "DNxHD" : "dnxhd -b:v <video_bitrate>",
-        "H264" : "libx264 -vf format=yuv420p -b:v <video_bitrate> -preset medium -crf 18",
-        "ProRes Proxy" : "prores_ks -profile:v 0 -pix_fmt yuv422p10le -vendor ap10 -qscale:v 9",
-        "ProRes LT" : "prores_ks -profile:v 1 -pix_fmt yuv422p10le -vendor ap10 -qscale:v 9",
-        "ProRes" : "prores_ks -profile:v 2 -pix_fmt yuv422p10le -vendor ap10 -qscale:v 9",
-        "ProRes HQ" : "prores_ks -profile:v 3 -pix_fmt yuv422p10le -vendor ap10 -qscale:v 9"
-    }
-
-
     print "Preparing job #%d for submission.." % jobCount
 
     # Getting all of the project settings environment variables
@@ -782,6 +738,22 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
     extraKVPIndex += 1
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGFrameHeight=%d\n" % (extraKVPIndex, int(dialog.draftSizeCombo.value().split("x")[1]) ) ) )
     extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGLut=%s\n" % (extraKVPIndex, os.environ.get("DEFAULTLUT") ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGCodec=%s\n" % (extraKVPIndex, dialog.draftCodecCombo.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGFps=%s\n" % (extraKVPIndex, dialog.projectSettings.get( "FPS" ) ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGFirstFrame=%s\n" % (extraKVPIndex, tempFrameList.split("-")[0] ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGSlate=%s\n" % (extraKVPIndex, dialog.draftAppendSlate.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGBurnIn=%s\n" % (extraKVPIndex, dialog.draftBurnInInfo.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGMask=%s\n" % (extraKVPIndex, dialog.draftBurnInMask.value() ) ) )
+    extraKVPIndex += 1
+    fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGProjectionAspectRatio=%s\n" % (extraKVPIndex, os.environ.get("PROJECTIONASPECTRATIO") ) ) )
+    extraKVPIndex += 1
 #
 #    DraftExtraArgs = (''' projectRatio="%s"  ''' % ( dialog.projectSettings.get( "PROJECTIONASPECTRATIO" ) ) ) # should be in the project conf ini
 #    DraftExtraArgs += (''' projectFramerate="%s"  ''' % ( dialog.projectSettings.get( "FPS" ) ) ) # should be in the project conf ini
@@ -797,31 +769,6 @@ def SubmitJob( dialog, root, node, writeNodes, jobsTemp, tempJobName, tempFrameL
 
     InputArgs = "-start_number {} -framerate {}".format(tempFrameList.split("-")[0], dialog.projectSettings.get( "FPS" ))
     FFMPEGExtraArgs = (''' InputArgs0="%s" ''' % ( InputArgs ))
-
-    codec = FFMPEGCodecs[dialog.draftCodecCombo.value()]
-
-    size = dialog.draftSizeCombo.value()
-    width = int(size.split("x")[0])
-    height = int(size.split("x")[1])
-    fps = float(dialog.projectSettings.get( "FPS" ))
-    if fps.is_integer(): # remove the .0 in the whole numbers
-        fps = int(fps)
-
-    if dialog.draftCodecCombo.value() == "DNxHD":
-
-        movieOuputFormat = "{}p{}".format(height, fps)
-        codec = codec.replace("<video_bitrate>", DNxHDBitrates[movieOuputFormat])
-
-    if dialog.draftCodecCombo.value() == "H264":
-        bitrate = (width * height * fps * 2 * 0.07) / 1000
-        lgop = int( fps / 2 )
-
-        codec = codec.replace("<video_bitrate>", str(bitrate))
-        codec = codec.replace("<gop_size>", str(lgop))
-
-    lutPath = os.path.join( dialog.projectSettings.get( "DEFAULTLUT" ) )
-    OutputArgs = "-c:v {} -r {} -s {}  -vf lut3d='{}'  -c:a copy".format( codec, dialog.projectSettings.get( "FPS" ) , dialog.draftSizeCombo.value() , lutPath)
-    FFMPEGExtraArgs += (''' OutputArgs="%s" ''' % ( OutputArgs ))
 
     fileHandle.write( EncodeAsUTF16String( "ExtraInfoKeyValue%d=FFMPEGExtraArgs=%s\n" % (extraKVPIndex, FFMPEGExtraArgs ) ) )
     extraKVPIndex += 1
