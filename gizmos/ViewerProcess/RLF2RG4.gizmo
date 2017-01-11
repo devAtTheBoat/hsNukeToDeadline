@@ -1,0 +1,25 @@
+#! /Applications/Nuke10.0v4/Nuke10.0v4.app/Contents/MacOS//libnuke-10.0.4.dylib -nx
+version 10.0 v4
+Gizmo {
+}
+ Input {
+  inputs 0
+  name Input1
+  xpos 186
+  ypos -3
+ }
+ Vectorfield {
+  vfield_file /theboat/_config/luts/RLF_2_RG4_32.cube
+  version 1
+  file_type cube
+  colorspaceIn Cineon
+  name Vectorfield1
+  xpos 186
+  ypos 52
+ }
+ Output {
+  name Output1
+  xpos 186
+  ypos 137
+ }
+end_group
