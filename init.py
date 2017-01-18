@@ -5,7 +5,7 @@
 #####################
 
 import nuke, os, sys, re
-from GizmoPathManager import GizmoPathManager 
+from GizmoPathManager import GizmoPathManager
 
 rootFolder = os.environ.get("ROOTFOLDER")
 rootFolderConfig = os.path.join(rootFolder, "_config")
