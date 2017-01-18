@@ -70,11 +70,7 @@ nuke.knobDefault("Root.format", "2k 1.77")
 # FrameHolds default to current frame
 nuke.menu('Nodes').addCommand( "Time/FrameHold", "nuke.createNode('FrameHold')['first_frame'].setValue( nuke.frame() )", icon='FrameHold.png')
 
-
 # Hovering Sombrero Nuke to Deadline
 nuke.pluginAddPath('scripts/deadline')
-import hsNukeToDeadline as _hsNukeToDeadline
-theboatNodes.addCommand("Render on the farm...", _hsNukeToDeadline.SubmitToDeadline, icon= rootFolderConfig+'/icons/deadlineIcon.png')
-
-#nuke.tprint ("Finished running "+job+" config from " + os.path.realpath(__file__)) #for job _config
-nuke.tprint ("Finished running general config from " + os.path.realpath(__file__))
+import DeadlineNukeClient
+theboatNodes.addCommand("Render on the farm...", DeadlineNukeClient.main, "")
