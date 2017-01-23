@@ -4,7 +4,8 @@
 #####################
 
 import nuke, os, sys, re
-
+# get the python modules
+nuke.pluginAddPath("./python")
 
 nuke.tprint( "*------------------------" )
 nuke.tprint( "* This is theboat menu.py" )
@@ -86,3 +87,13 @@ def checkScriptEnvironment():
         nuke.message("You are opening a nuke script without the correct environment variables.")
 
 nuke.addOnScriptLoad(checkScriptEnvironment)
+from HSNukeMonitor import HSNukeMonitor
+
+def addHSPanel():
+    global hsPanel
+    hsPanel = HSNukeMonitor()
+    return hsPanel.addToPane()
+
+paneMenu = nuke.menu('Pane')
+paneMenu.addCommand('HoveringSombreroMonitor', addHSPanel)
+nukescripts.registerPanel('com.hoveringsombrero.monitor', addHSPanel)
