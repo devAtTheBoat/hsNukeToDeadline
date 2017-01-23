@@ -84,7 +84,7 @@ theboatNodes.addCommand("Render on the farm...", DeadlineNukeClient.main, "")
 def checkScriptEnvironment():
 
     if os.environ.get("LINK") not in nuke.Root().name():
-        nuke.message("You are opening a nuke script without the correct environment variables.")
+        nuke.message("You are opening a nuke script without the correct environment variables.\nIssues will raise when rendering.\nBe careful.\nReally careful\nYou could simply launch it from Hovering Sombrero")
 
 nuke.addOnScriptLoad(checkScriptEnvironment)
 from HSNukeMonitor import HSNukeMonitor
