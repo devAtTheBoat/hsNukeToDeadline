@@ -5,7 +5,9 @@
 #####################
 
 import nuke, os, sys, re
-from GizmoPathManager import GizmoPathManager
+
+# get the python modules
+nuke.pluginAddPath("./python")
 
 rootFolder = os.environ.get("ROOTFOLDER")
 rootFolderConfig = os.path.join(rootFolder, "_config")
@@ -71,6 +73,8 @@ nuke.tprint ('Activated createWriteDir')
 nuke.tprint("Loading LUMA PICTURES GIZMO LOADER")
 # LUMA PICTURES GIZMO LOADER
 if __name__ == '__main__':
+
+    from GizmoPathManager import GizmoPathManager
 
     CUSTOM_GIZMO_LOCATION = rootFolderConfig
     CUSTOM_GIZMO_LOCATION = os.path.expandvars(CUSTOM_GIZMO_LOCATION.strip()).rstrip('/\\')

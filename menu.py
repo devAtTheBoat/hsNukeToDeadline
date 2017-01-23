@@ -4,7 +4,8 @@
 #####################
 
 import nuke, os, sys, re
-
+# get the python modules
+nuke.pluginAddPath("./python")
 
 nuke.tprint( "*------------------------" )
 nuke.tprint( "* This is theboat menu.py" )
@@ -74,3 +75,14 @@ nuke.menu('Nodes').addCommand( "Time/FrameHold", "nuke.createNode('FrameHold')['
 nuke.pluginAddPath('scripts/deadline')
 import DeadlineNukeClient
 theboatNodes.addCommand("Render on the farm...", DeadlineNukeClient.main, "")
+
+from HSNukeMonitor import HSNukeMonitor
+
+def addHSPanel():
+    global hsPanel
+    hsPanel = HSNukeMonitor()
+    return hsPanel.addToPane()
+
+paneMenu = nuke.menu('Pane')
+paneMenu.addCommand('HoveringSombreroMonitor', addHSPanel)
+nukescripts.registerPanel('com.hoveringsombrero.monitor', addHSPanel)
