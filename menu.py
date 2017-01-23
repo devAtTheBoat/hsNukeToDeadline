@@ -74,3 +74,15 @@ nuke.menu('Nodes').addCommand( "Time/FrameHold", "nuke.createNode('FrameHold')['
 nuke.pluginAddPath('scripts/deadline')
 import DeadlineNukeClient
 theboatNodes.addCommand("Render on the farm...", DeadlineNukeClient.main, "")
+
+
+#
+# check if the opened script name is
+# is similar to the environment
+#
+def checkScriptEnvironment():
+
+    if os.environ.get("LINK") not in nuke.Root().name():
+        nuke.message("You are opening a nuke script without the correct environment variables.")
+
+nuke.addOnScriptLoad(checkScriptEnvironment)
