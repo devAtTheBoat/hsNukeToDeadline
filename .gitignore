@@ -5,5 +5,7 @@
 /node_modules/
 .DS_Store
 *.pyc
-/jobs/*
 .smbdelete*
+ocio/*
+shaders/*
+jobs/*.job

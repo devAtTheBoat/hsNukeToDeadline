@@ -10,12 +10,15 @@ import nuke, os, sys, re
 rootFolder = os.environ.get("ROOTFOLDER")
 rootFolderConfig = os.path.join(rootFolder, "_config")
 
+os.environ["OFX_PLUGIN_PATH"] = os.path.join ( rootFolderConfig , "OFX" )
+
 nuke.tprint( "*------------------------" )
 nuke.tprint( "* This is theboat init.py" )
 nuke.tprint( "*", os.path.realpath(__file__) )
 nuke.tprint( "*------------------------" )
 nuke.tprint( "rootFolder:", rootFolder )
 nuke.tprint( "rootFolderConfig:", rootFolderConfig )
+
 
 job = 'jobNotSet'
 shot = 'shotNotSet'
